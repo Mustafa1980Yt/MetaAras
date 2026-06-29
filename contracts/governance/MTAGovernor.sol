@@ -11,17 +11,22 @@ import {IVotes} from "@openzeppelin/contracts/governance/utils/IVotes.sol";
 import {TimelockController} from "@openzeppelin/contracts/governance/TimelockController.sol";
 
 /**
- * @title MTAGovernor
- * @notice MetaAras DAO yönetim kontratı.
+ * @title  MTAGovernor
+ * @author MetaAras Team
+ * @notice MetaAras DAO on-chain governance contract.
  *
- * Parametreler:
- *  - Oy gecikmesi      : 1 gün (~ 7200 blok @ 12s)
- *  - Oy süresi         : 7 gün (~ 50400 blok)
- *  - Öneri eşiği       : 500.000 MTA (%0.5 toplam arz — sybil direnci)
- *  - Quorum            : %4 toplam delegated supply
- *  - Timelock gecikmesi: 48 saat (MTATimelock)
+ * @dev    Uses EIP-6372 timestamp-based clock (mode=timestamp) instead of block numbers.
+ *         This ensures identical governance timing across Ethereum and BSC regardless
+ *         of chain-specific block intervals (12s Ethereum vs ~3s BSC).
  *
- * Teklif türleri (GovernorCountingSimple):
+ * Parameters (seconds-based after EIP-6372 clock override):
+ *  - Voting delay      : 86400 s  = 1 day  (waiting period before voting starts)
+ *  - Voting period     : 604800 s = 7 days (active voting window)
+ *  - Proposal threshold: 500,000 MTA = 0.5% of supply (sybil resistance)
+ *  - Quorum            : 4% of total delegated supply
+ *  - Timelock delay    : 48 hours (MTATimelock MIN_DELAY)
+ *
+ * Vote types (GovernorCountingSimple):
  *  0 = Against / 1 = For / 2 = Abstain
  */
 contract MTAGovernor is
@@ -38,16 +43,20 @@ contract MTAGovernor is
     )
         Governor("MetaAras Governor")
         GovernorSettings(
-            7_200,       // 1 günlük oy gecikmesi (blok cinsinden)
-            50_400,      // 7 günlük oy süresi
-            500_000e18   // 500.000 MTA öneri eşiği (%0.5) — G-1 fix: sybil direnci
+            1 days,      // 86400 s — voting delay (EIP-6372 timestamp mode)
+            7 days,      // 604800 s — voting period
+            500_000e18   // 500,000 MTA proposal threshold (0.5% of total supply)
         )
         GovernorVotes(_token)
-        GovernorVotesQuorumFraction(4)     // %4 quorum
+        GovernorVotesQuorumFraction(4)    // 4% quorum
         GovernorTimelockControl(_timelock)
     {}
 
     // ─── Required Overrides ────────────────────────────────────────────────────
+    // clock() and CLOCK_MODE() are NOT overridden here — GovernorVotes delegates
+    // them to MTAToken, which overrides ERC20Votes.clock() / CLOCK_MODE() with
+    // "mode=timestamp". This keeps the clock definition in a single place.
+
     function votingDelay()
         public view override(Governor, GovernorSettings) returns (uint256)
     {
@@ -60,10 +69,10 @@ contract MTAGovernor is
         return super.votingPeriod();
     }
 
-    function quorum(uint256 blockNumber)
+    function quorum(uint256 timepoint)
         public view override(Governor, GovernorVotesQuorumFraction) returns (uint256)
     {
-        return super.quorum(blockNumber);
+        return super.quorum(timepoint);
     }
 
     function state(uint256 proposalId)

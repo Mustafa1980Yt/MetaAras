@@ -17,15 +17,14 @@ import { getContractAddresses } from '@/constants/contracts';
 import { formatTokenAmount } from '@/utils/format';
 
 const TOKEN_ABI = [
-  { name: 'paused',           type: 'function', stateMutability: 'view',         inputs: [],                                                              outputs: [{ type: 'bool' }] },
-  { name: 'pause',            type: 'function', stateMutability: 'nonpayable',   inputs: [],                                                              outputs: [] },
-  { name: 'unpause',          type: 'function', stateMutability: 'nonpayable',   inputs: [],                                                              outputs: [] },
-  { name: 'hasRole',          type: 'function', stateMutability: 'view',         inputs: [{ name: 'role', type: 'bytes32' }, { name: 'account', type: 'address' }], outputs: [{ type: 'bool' }] },
-  { name: 'blacklist',        type: 'function', stateMutability: 'nonpayable',   inputs: [{ name: 'account', type: 'address' }],                          outputs: [] },
-  { name: 'unblacklist',      type: 'function', stateMutability: 'nonpayable',   inputs: [{ name: 'account', type: 'address' }],                          outputs: [] },
-  { name: 'isBlacklisted',    type: 'function', stateMutability: 'view',         inputs: [{ name: 'account', type: 'address' }],                          outputs: [{ type: 'bool' }] },
-  { name: 'isMintingDisabled',type: 'function', stateMutability: 'view',         inputs: [],                                                              outputs: [{ type: 'bool' }] },
-  { name: 'totalSupply',      type: 'function', stateMutability: 'view',         inputs: [],                                                              outputs: [{ type: 'uint256' }] },
+  { name: 'paused',           type: 'function', stateMutability: 'view',         inputs: [],                                                                                                       outputs: [{ type: 'bool' }] },
+  { name: 'pause',            type: 'function', stateMutability: 'nonpayable',   inputs: [],                                                                                                       outputs: [] },
+  { name: 'unpause',          type: 'function', stateMutability: 'nonpayable',   inputs: [],                                                                                                       outputs: [] },
+  { name: 'hasRole',          type: 'function', stateMutability: 'view',         inputs: [{ name: 'role', type: 'bytes32' }, { name: 'account', type: 'address' }],                               outputs: [{ type: 'bool' }] },
+  { name: 'setBlacklist',     type: 'function', stateMutability: 'nonpayable',   inputs: [{ name: 'account', type: 'address' }, { name: 'status', type: 'bool' }],                               outputs: [] },
+  { name: 'isBlacklisted',    type: 'function', stateMutability: 'view',         inputs: [{ name: 'account', type: 'address' }],                                                                  outputs: [{ type: 'bool' }] },
+  { name: 'isMintingDisabled',type: 'function', stateMutability: 'view',         inputs: [],                                                                                                       outputs: [{ type: 'bool' }] },
+  { name: 'totalSupply',      type: 'function', stateMutability: 'view',         inputs: [],                                                                                                       outputs: [{ type: 'uint256' }] },
 ] as const;
 
 const STAKING_ABI = [
@@ -258,19 +257,19 @@ export default function AdminPage() {
             <div className="flex gap-3">
               <Button
                 variant="secondary" fullWidth
-                onClick={() => tx(tokenAddr, TOKEN_ABI, 'blacklist', [blacklistTarget as `0x${string}`])}
-                loading={isPending} disabled={!isBlacklister || blacklistTarget.length !== 42}
+                onClick={() => tx(tokenAddr, TOKEN_ABI, 'setBlacklist', [blacklistTarget as `0x${string}`, true])}
+                loading={isPending} disabled={!isBlacklister || blacklistTarget.length !== 42 || !!targetBlacklisted}
                 className="border-red-500/30 text-red-400 hover:bg-red-500/10 disabled:opacity-40"
               >
                 Blacklist
               </Button>
               <Button
                 variant="secondary" fullWidth
-                onClick={() => tx(tokenAddr, TOKEN_ABI, 'unblacklist', [blacklistTarget as `0x${string}`])}
-                loading={isPending} disabled={!isBlacklister || blacklistTarget.length !== 42}
+                onClick={() => tx(tokenAddr, TOKEN_ABI, 'setBlacklist', [blacklistTarget as `0x${string}`, false])}
+                loading={isPending} disabled={!isBlacklister || blacklistTarget.length !== 42 || !targetBlacklisted}
                 className="border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10 disabled:opacity-40"
               >
-                Unblacklist
+                Remove Blacklist
               </Button>
             </div>
           </CardContent>

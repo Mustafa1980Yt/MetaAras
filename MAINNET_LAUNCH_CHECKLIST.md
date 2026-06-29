@@ -2,7 +2,7 @@
 
 > **Status**: Pre-Launch · External audit required before mainnet deploy  
 > **Target**: Q3 2026 · Ethereum Mainnet + BSC Mainnet  
-> **Last code review**: 2026-06-29 — 164 tests passing · 0 TypeScript errors · 0 build errors
+> **Last code review**: 2026-06-29 — 166 tests passing · 0 TypeScript errors · 0 build errors
 
 ---
 
@@ -13,8 +13,20 @@
 - [x] **Governance page** — Mock data removed; real on-chain `castVote` / `hasVoted` / `proposalVotes` / `state` calls wired up; voting buttons enabled; manual proposal ID lookup added
 - [x] **Integration tests** — `test/integration/MTAProtocol.test.ts` created (Flow 1: Vesting, Flow 2: Staking, Flow 3: Security, Flow 4: Max Supply, Flow 5: Governance, Flow 6: Vesting→Staking)
 - [x] **Fuzz tests** — `test/fuzz/MTAStaking.fuzz.test.ts` created (reward formula, APY ordering, penalty exactness, TVL consistency, double-unstake, claim reset, zero-amount)
-- [x] **All 164 tests passing** (`npx hardhat test` — 0 failures)
+- [x] **All 166 tests passing** (`npx hardhat test` — 0 failures)
 - [x] **Frontend build clean** (`npm run build` — 0 TypeScript errors, 24 routes generated)
+
+---
+
+## Completed (Session 2 — 2026-06-29)
+
+- [x] **05_post_deploy.ts security gaps fixed** — Added `VESTING_ADMIN_ROLE` transfer to multisig, deployer renounce, `revokeMinter()` call post-distribution, and 7-check verification step
+- [x] **CI/CD branch coverage** — Both `ci.yml` and `frontend.yml` now trigger on `mainnet-launch` branch (previously only `main/develop`)
+- [x] **CI unit test completeness** — `MTAGovernor.test.ts` added to test/coverage/gas-report steps; integration and fuzz tests run unconditionally (no longer gated to `main` only)
+- [x] **MTAToken EIP-6372 timestamp clock** — `clock()` and `CLOCK_MODE()` overridden in `MTAToken` to return `block.timestamp` / `"mode=timestamp"` — vote checkpoints stored by timestamp, consistent on all chains
+- [x] **MTAGovernor EIP-6372 migration** — Voting delay/period changed from block numbers (7200/50400) to seconds (`1 days` = 86400 / `7 days` = 604800), ensuring 1-day/7-day governance windows on both Ethereum (12s/block) and BSC (3s/block)
+- [x] **Governor tests updated** — `MTAGovernor.test.ts` migrated from `mine()` to `time.increase()`, 2 new tests for `clock()` and `CLOCK_MODE()` (24 tests total)
+- [x] **Integration tests updated** — Governance flow in `MTAProtocol.test.ts` migrated from `mine()` to `time.increase()`; VOTING_DELAY/PERIOD corrected to seconds
 
 ---
 
@@ -54,7 +66,7 @@
 - [ ] Re-audit of any modified code post-findings
 - [ ] Static analysis: Slither passing with no high-severity outputs
 - [ ] Solhint clean (zero warnings)
-- [x] All tests passing — 164 total (unit + integration + fuzz)
+- [x] All tests passing — 166 total (unit + integration + fuzz)
 - [ ] Gas report generated and reviewed
 - [ ] Foundry fuzz testing (100K+ runs) — bonus
 

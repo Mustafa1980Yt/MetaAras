@@ -3,7 +3,7 @@ import { ethers, upgrades } from "hardhat";
 import { HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/signers";
 import { MTAToken, MTAVesting, MTAStaking, MTAGovernor, MTATimelock } from "../../typechain-types";
 import { parseEther, ZeroAddress } from "ethers";
-import { time, mine } from "@nomicfoundation/hardhat-network-helpers";
+import { time } from "@nomicfoundation/hardhat-network-helpers";
 
 /**
  * Integration tests: full protocol lifecycle across all contracts.
@@ -350,8 +350,8 @@ describe("MetaAras Protocol — Integration Tests", () => {
 
   // ─── Flow 5: Governance Proposal Lifecycle ─────────────────────────────────
   describe("Flow 5: Governance — Proposal Lifecycle", () => {
-    const VOTING_DELAY  = 7200n;
-    const VOTING_PERIOD = 50400n;
+    const VOTING_DELAY  = 86_400n;  // 1 day in seconds (EIP-6372 timestamp clock)
+    const VOTING_PERIOD = 604_800n; // 7 days in seconds
     const TIMELOCK_DELAY = 48n * 3600n;
 
     beforeEach(async () => {
@@ -385,7 +385,7 @@ describe("MetaAras Protocol — Integration Tests", () => {
       expect(await governor.state(proposalId)).to.equal(0);
 
       // Skip voting delay
-      await mine(Number(VOTING_DELAY) + 1);
+      await time.increase(Number(VOTING_DELAY) + 1);
 
       // State: Active
       expect(await governor.state(proposalId)).to.equal(1);
@@ -395,7 +395,7 @@ describe("MetaAras Protocol — Integration Tests", () => {
       await governor.connect(user2).castVote(proposalId, 1); // FOR
 
       // End voting period
-      await mine(Number(VOTING_PERIOD) + 1);
+      await time.increase(Number(VOTING_PERIOD) + 1);
 
       // State: Succeeded
       expect(await governor.state(proposalId)).to.equal(4);
@@ -429,9 +429,9 @@ describe("MetaAras Protocol — Integration Tests", () => {
       });
       const proposalId = governor.interface.parseLog(event as any)!.args[0] as bigint;
 
-      await mine(Number(VOTING_DELAY) + 1);
+      await time.increase(Number(VOTING_DELAY) + 1);
       // No votes cast → quorum not reached → Defeated
-      await mine(Number(VOTING_PERIOD) + 1);
+      await time.increase(Number(VOTING_PERIOD) + 1);
 
       expect(await governor.state(proposalId)).to.equal(3); // Defeated
     });

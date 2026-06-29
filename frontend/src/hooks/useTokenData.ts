@@ -15,13 +15,19 @@ const MTA_ABI = [
   { name: 'paused',           type: 'function', stateMutability: 'view', inputs: [], outputs: [{ type: 'bool' }] },
 ] as const;
 
+const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
+
+function isValidAddress(addr: string): addr is `0x${string}` {
+  return !!addr && addr !== ZERO_ADDRESS;
+}
+
 export function useTokenData() {
   const chainId   = useChainId();
   const { address } = useAccount();
 
   const addresses = getContractAddresses(chainId);
   const tokenAddress = addresses.MTAToken as `0x${string}`;
-  const enabled = !!tokenAddress;
+  const enabled = isValidAddress(tokenAddress);
 
   const { data: totalSupply }       = useReadContract({ address: tokenAddress, abi: MTA_ABI, functionName: 'totalSupply',       query: { enabled } });
   const { data: maxSupply }         = useReadContract({ address: tokenAddress, abi: MTA_ABI, functionName: 'MAX_SUPPLY',        query: { enabled } });
@@ -56,7 +62,7 @@ export function useStakingData() {
     { name: 'positionCount',           type: 'function', stateMutability: 'view', inputs: [{ name: 'user', type: 'address' }], outputs: [{ type: 'uint256' }] },
   ] as const;
 
-  const enabled = !!stakingAddress;
+  const enabled = isValidAddress(stakingAddress);
 
   const { data: globalStaked }   = useReadContract({ address: stakingAddress, abi: STAKING_ABI, functionName: 'globalTotalStaked',       query: { enabled } });
   const { data: totalPenalties } = useReadContract({ address: stakingAddress, abi: STAKING_ABI, functionName: 'totalPenaltiesCollected', query: { enabled } });

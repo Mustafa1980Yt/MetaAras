@@ -33,12 +33,21 @@ function WalletNotConnected() {
   );
 }
 
+const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
+
+const NETWORK_NAMES: Record<number, string> = {
+  1: 'Ethereum Mainnet', 56: 'BNB Chain', 11155111: 'Sepolia Testnet',
+  97: 'BSC Testnet', 31337: 'Hardhat Local',
+};
+
 export default function DashboardPage() {
   const chainId = useChainId();
   const { address, isConnected } = useAccount();
   const { userBalance, userVotes, totalSupply, circulatingSupply, paused } = useTokenData();
   const { globalTotalStaked, positionCount, stakingAddress } = useStakingData();
   const contractAddrs = getContractAddresses(chainId);
+  const contractsDeployed = contractAddrs.MTAToken !== ZERO_ADDRESS;
+  const networkName = NETWORK_NAMES[chainId] ?? `Chain ${chainId}`;
 
   if (!isConnected) return <WalletNotConnected />;
 
@@ -54,7 +63,11 @@ export default function DashboardPage() {
         </div>
         <div className="flex items-center gap-2">
           {paused && <Badge variant="danger" dot>Protocol Paused</Badge>}
-          <Badge variant="success" dot>Mainnet Ready</Badge>
+          {contractsDeployed ? (
+            <Badge variant="success" dot>{networkName}</Badge>
+          ) : (
+            <Badge variant="warning" dot>Contracts Not Deployed</Badge>
+          )}
         </div>
       </div>
 

@@ -8,6 +8,7 @@ import {ERC20Votes} from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Vo
 import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 import {Pausable} from "@openzeppelin/contracts/utils/Pausable.sol";
 import {Nonces} from "@openzeppelin/contracts/utils/Nonces.sol";
+import {Time} from "@openzeppelin/contracts/utils/types/Time.sol";
 import {IMTAToken} from "../interfaces/IMTAToken.sol";
 
 /**
@@ -35,6 +36,8 @@ import {IMTAToken} from "../interfaces/IMTAToken.sol";
  *         - No upgrade proxy — immutable bytecode, maximises trust
  *         - Mint flag is one-way: once disabled, it cannot be re-enabled
  *         - Blacklist blocks transfers, not burns; users may still destroy own tokens
+ *         - EIP-6372 timestamp clock: vote checkpoints stored by block.timestamp,
+ *           ensuring consistent governance timing across Ethereum and BSC.
  */
 contract MTAToken is
     ERC20,
@@ -177,6 +180,28 @@ contract MTAToken is
      */
     function circulatingSupply() external view returns (uint256) {
         return totalSupply();
+    }
+
+    // ─── Public: EIP-6372 Clock ────────────────────────────────────────────────
+
+    /**
+     * @notice Returns the current timestamp as the vote-checkpoint clock value.
+     * @dev    Overrides ERC20Votes.clock() to use block.timestamp instead of block.number.
+     *         GovernorVotes inherits this via IVotes, making governance timing chain-agnostic
+     *         (Ethereum 12 s/block ≈ BSC 3 s/block both map to the same wallclock periods).
+     */
+    function clock() public view override returns (uint48) {
+        return uint48(block.timestamp);
+    }
+
+    /**
+     * @dev EIP-6372 machine-readable clock description.
+     *      "mode=timestamp" signals that getPastVotes / getPastTotalSupply timepoints are
+     *      Unix seconds, not block numbers.
+     */
+    // solhint-disable-next-line func-name-mixedcase
+    function CLOCK_MODE() public pure override returns (string memory) {
+        return "mode=timestamp";
     }
 
     // ─── Public: View ──────────────────────────────────────────────────────────

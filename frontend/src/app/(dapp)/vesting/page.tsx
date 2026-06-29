@@ -1,18 +1,20 @@
 'use client';
 
-import { useAccount, useReadContract, useChainId } from 'wagmi';
+import { useAccount, useReadContract, useWriteContract, useChainId } from 'wagmi';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
-import { Lock, Clock, TrendingDown, CheckCircle } from 'lucide-react';
+import { Lock, Clock, TrendingDown, CheckCircle, Download } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
+import { Button } from '@/components/ui/Button';
 import { StatCard } from '@/components/ui/StatCard';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { formatDate, formatTokenAmount, formatAddress } from '@/utils/format';
 import { getContractAddresses } from '@/constants/contracts';
+import toast from 'react-hot-toast';
 
 const VESTING_ABI = [
-  { name: 'getBeneficiarySchedules', type: 'function', stateMutability: 'view', inputs: [{ name: 'beneficiary', type: 'address' }], outputs: [{ type: 'bytes32[]' }] },
-  { name: 'getSchedule', type: 'function', stateMutability: 'view', inputs: [{ name: 'scheduleId', type: 'bytes32' }], outputs: [{ type: 'tuple', components: [
+  { name: 'getBeneficiarySchedules', type: 'function', stateMutability: 'view',       inputs: [{ name: 'beneficiary', type: 'address' }],                outputs: [{ type: 'bytes32[]' }] },
+  { name: 'getSchedule',             type: 'function', stateMutability: 'view',       inputs: [{ name: 'scheduleId', type: 'bytes32' }],                 outputs: [{ type: 'tuple', components: [
     { name: 'beneficiary',     type: 'address' },
     { name: 'totalAmount',     type: 'uint256' },
     { name: 'released',        type: 'uint256' },
@@ -22,18 +24,28 @@ const VESTING_ABI = [
     { name: 'revocable',       type: 'bool' },
     { name: 'revoked',         type: 'bool' },
   ]}] },
-  { name: 'totalVestingAmount', type: 'function', stateMutability: 'view', inputs: [], outputs: [{ type: 'uint256' }] },
+  { name: 'releasableAmount',        type: 'function', stateMutability: 'view',       inputs: [{ name: 'scheduleId', type: 'bytes32' }],                 outputs: [{ type: 'uint256' }] },
+  { name: 'release',                 type: 'function', stateMutability: 'nonpayable', inputs: [{ name: 'scheduleId', type: 'bytes32' }],                 outputs: [] },
+  { name: 'totalVestingAmount',      type: 'function', stateMutability: 'view',       inputs: [],                                                        outputs: [{ type: 'uint256' }] },
 ] as const;
 
 function ScheduleCard({ id, vestingAddress }: { id: `0x${string}`; vestingAddress: `0x${string}` }) {
-  const { data: schedule } = useReadContract({
+  const { data: schedule, refetch: refetchSchedule } = useReadContract({
     address: vestingAddress,
     abi: VESTING_ABI,
     functionName: 'getSchedule',
     args: [id],
   });
+  const { data: releasable, refetch: refetchReleasable } = useReadContract({
+    address: vestingAddress,
+    abi: VESTING_ABI,
+    functionName: 'releasableAmount',
+    args: [id],
+  });
 
-  if (!schedule) return <Skeleton className="h-40" />;
+  const { writeContract, isPending } = useWriteContract();
+
+  if (!schedule) return <Skeleton className="h-48" />;
 
   const now       = Math.floor(Date.now() / 1000);
   const cliffEnd  = Number(schedule.startTime) + Number(schedule.cliffDuration);
@@ -50,7 +62,23 @@ function ScheduleCard({ id, vestingAddress }: { id: `0x${string}`; vestingAddres
   const statusVariant = schedule.revoked ? 'danger'
     : now < cliffEnd  ? 'warning'
     : now < vestEnd   ? 'brand'
-    : 'success';
+    : 'success' as const;
+
+  const canRelease = !schedule.revoked && (releasable ?? 0n) > 0n;
+
+  function handleRelease() {
+    writeContract(
+      { address: vestingAddress, abi: VESTING_ABI, functionName: 'release', args: [id] },
+      {
+        onSuccess: () => {
+          toast.success('Release transaction submitted!');
+          refetchSchedule();
+          refetchReleasable();
+        },
+        onError: e => toast.error(e.message.slice(0, 80)),
+      },
+    );
+  }
 
   return (
     <Card glow>
@@ -78,7 +106,7 @@ function ScheduleCard({ id, vestingAddress }: { id: `0x${string}`; vestingAddres
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 text-sm">
+      <div className="grid grid-cols-2 gap-3 text-sm mb-4">
         <div>
           <p className="text-xs text-[var(--text-muted)]">Total</p>
           <p className="font-bold text-[var(--text-primary)]">{formatTokenAmount(schedule.totalAmount)} MTA</p>
@@ -96,6 +124,26 @@ function ScheduleCard({ id, vestingAddress }: { id: `0x${string}`; vestingAddres
           <p className="text-[var(--text-secondary)]">{formatDate(vestEnd)}</p>
         </div>
       </div>
+
+      {/* Releasable amount + Release button */}
+      {!schedule.revoked && (
+        <div className="border-t border-[var(--border)] pt-3">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs text-[var(--text-muted)]">Available to release</span>
+            <span className={`text-sm font-bold ${canRelease ? 'text-emerald-400' : 'text-[var(--text-muted)]'}`}>
+              {releasable !== undefined ? `${formatTokenAmount(releasable)} MTA` : '—'}
+            </span>
+          </div>
+          <Button
+            fullWidth onClick={handleRelease} loading={isPending}
+            disabled={!canRelease}
+            className={canRelease ? 'bg-emerald-600 hover:bg-emerald-500 text-white' : 'opacity-40'}
+          >
+            <Download className="w-4 h-4" />
+            {now < cliffEnd ? 'Cliff Active — Not Available' : canRelease ? 'Release Tokens' : 'Nothing to Release'}
+          </Button>
+        </div>
+      )}
     </Card>
   );
 }

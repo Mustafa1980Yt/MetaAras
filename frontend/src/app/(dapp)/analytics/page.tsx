@@ -25,10 +25,10 @@ const VESTING_ABI = [
 ] as const;
 
 const TIER_DATA = [
-  { name: 'Bronze',   apy: 8,  lockDays: 30,  minAmount: 100,    color: '#cd7f32', pct: 15 },
-  { name: 'Silver',   apy: 15, lockDays: 90,  minAmount: 1_000,  color: '#9ca3af', pct: 25 },
-  { name: 'Gold',     apy: 25, lockDays: 180, minAmount: 5_000,  color: '#eab308', pct: 40 },
-  { name: 'Platinum', apy: 40, lockDays: 365, minAmount: 10_000, color: '#6366f1', pct: 20 },
+  { name: 'Bronze',   apy: 8,  lockDays: 30,  color: '#cd7f32', pct: 15 },
+  { name: 'Silver',   apy: 15, lockDays: 90,  color: '#9ca3af', pct: 25 },
+  { name: 'Gold',     apy: 25, lockDays: 180, color: '#eab308', pct: 40 },
+  { name: 'Platinum', apy: 40, lockDays: 365, color: '#6366f1', pct: 20 },
 ];
 
 const ALLOCATION_DATA = [
@@ -182,8 +182,8 @@ export default function AnalyticsPage() {
                 </div>
                 <div className="space-y-2 text-xs text-[var(--text-muted)]">
                   <div className="flex justify-between"><span>Lock Days</span><span className="text-[var(--text-secondary)]">{t.lockDays}d</span></div>
-                  <div className="flex justify-between"><span>Min Amount</span><span className="text-[var(--text-secondary)]">{t.minAmount.toLocaleString()} MTA</span></div>
-                  <div className="flex justify-between"><span>Early Exit</span><span className="text-red-400">20%</span></div>
+                  <div className="flex justify-between"><span>Min Amount</span><span className="text-[var(--text-secondary)]">No minimum</span></div>
+                  <div className="flex justify-between"><span>Early Exit</span><span className="text-red-400">20% penalty</span></div>
                 </div>
                 <div className="mt-3">
                   <div className="flex justify-between text-xs mb-1">
