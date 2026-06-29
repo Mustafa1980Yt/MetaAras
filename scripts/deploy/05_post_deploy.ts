@@ -157,11 +157,12 @@ async function main() {
   } else {
     console.log("  ✓ Token:  minting zaten devre dışı");
   }
-  // MINTER_ROLE'u deployer'dan da iptal et (artık anlamsız ama temizlik için)
+  // MINTER_ROLE'u deployer'dan bırak — renounceRole kullan (admin gerektirmez,
+  // çünkü DEFAULT_ADMIN_ROLE yukarıda zaten bırakıldı)
   const hasMinter = await token.hasRole(MINTER_ROLE, deployer.address);
   if (hasMinter) {
-    await (await token.revokeRole(MINTER_ROLE, deployer.address)).wait();
-    console.log("  ✓ Token:  MINTER_ROLE deployer'dan iptal edildi");
+    await (await token.renounceRole(MINTER_ROLE, deployer.address)).wait();
+    console.log("  ✓ Token:  MINTER_ROLE deployer'dan bırakıldı");
   }
 
   // ── 2. MTAVesting Rol Transferleri ───────────────────────────────────────
