@@ -115,6 +115,13 @@
         "inputs":  [
 
                    ],
+        "name":  "Staking__BelowMinimum",
+        "type":  "error"
+    },
+    {
+        "inputs":  [
+
+                   ],
         "name":  "Staking__InsufficientRewards",
         "type":  "error"
     },
@@ -151,13 +158,6 @@
 
                    ],
         "name":  "Staking__ZeroAddress",
-        "type":  "error"
-    },
-    {
-        "inputs":  [
-
-                   ],
-        "name":  "Staking__ZeroAmount",
         "type":  "error"
     },
     {
@@ -232,6 +232,37 @@
         "anonymous":  false,
         "inputs":  [
                        {
+                           "indexed":  true,
+                           "internalType":  "address",
+                           "name":  "user",
+                           "type":  "address"
+                       },
+                       {
+                           "indexed":  true,
+                           "internalType":  "uint256",
+                           "name":  "positionId",
+                           "type":  "uint256"
+                       },
+                       {
+                           "indexed":  false,
+                           "internalType":  "address",
+                           "name":  "destination",
+                           "type":  "address"
+                       },
+                       {
+                           "indexed":  false,
+                           "internalType":  "uint256",
+                           "name":  "amount",
+                           "type":  "uint256"
+                       }
+                   ],
+        "name":  "EmergencyUnstaked",
+        "type":  "event"
+    },
+    {
+        "anonymous":  false,
+        "inputs":  [
+                       {
                            "indexed":  false,
                            "internalType":  "uint64",
                            "name":  "version",
@@ -277,6 +308,31 @@
                        }
                    ],
         "name":  "RewardClaimed",
+        "type":  "event"
+    },
+    {
+        "anonymous":  false,
+        "inputs":  [
+                       {
+                           "indexed":  true,
+                           "internalType":  "address",
+                           "name":  "user",
+                           "type":  "address"
+                       },
+                       {
+                           "indexed":  true,
+                           "internalType":  "uint256",
+                           "name":  "positionId",
+                           "type":  "uint256"
+                       },
+                       {
+                           "indexed":  false,
+                           "internalType":  "uint256",
+                           "name":  "rewardLost",
+                           "type":  "uint256"
+                       }
+                   ],
+        "name":  "RewardPoolDepleted",
         "type":  "event"
     },
     {
@@ -541,6 +597,36 @@
         "inputs":  [
 
                    ],
+        "name":  "MAX_LOCK_DURATION",
+        "outputs":  [
+                        {
+                            "internalType":  "uint256",
+                            "name":  "",
+                            "type":  "uint256"
+                        }
+                    ],
+        "stateMutability":  "view",
+        "type":  "function"
+    },
+    {
+        "inputs":  [
+
+                   ],
+        "name":  "MIN_STAKE_AMOUNT",
+        "outputs":  [
+                        {
+                            "internalType":  "uint256",
+                            "name":  "",
+                            "type":  "uint256"
+                        }
+                    ],
+        "stateMutability":  "view",
+        "type":  "function"
+    },
+    {
+        "inputs":  [
+
+                   ],
         "name":  "PAUSER_ROLE",
         "outputs":  [
                         {
@@ -600,6 +686,31 @@
     {
         "inputs":  [
                        {
+                           "internalType":  "address",
+                           "name":  "user",
+                           "type":  "address"
+                       },
+                       {
+                           "internalType":  "uint256",
+                           "name":  "positionId",
+                           "type":  "uint256"
+                       },
+                       {
+                           "internalType":  "address",
+                           "name":  "destination",
+                           "type":  "address"
+                       }
+                   ],
+        "name":  "adminUnstake",
+        "outputs":  [
+
+                    ],
+        "stateMutability":  "nonpayable",
+        "type":  "function"
+    },
+    {
+        "inputs":  [
+                       {
                            "internalType":  "uint256",
                            "name":  "positionId",
                            "type":  "uint256"
@@ -652,6 +763,11 @@
                                                {
                                                    "internalType":  "uint256",
                                                    "name":  "claimedRewards",
+                                                   "type":  "uint256"
+                                               },
+                                               {
+                                                   "internalType":  "uint256",
+                                                   "name":  "stakedApyBps",
                                                    "type":  "uint256"
                                                },
                                                {
@@ -919,6 +1035,11 @@
                         {
                             "internalType":  "uint256",
                             "name":  "claimedRewards",
+                            "type":  "uint256"
+                        },
+                        {
+                            "internalType":  "uint256",
+                            "name":  "stakedApyBps",
                             "type":  "uint256"
                         },
                         {

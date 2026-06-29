@@ -5,6 +5,33 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [2.1.0-rc3] — 2026-06-29
+
+### Added
+- **`adminUnstake` tests** — 9 comprehensive tests covering normal flow, early exit penalty, post-lock no-penalty, `EmergencyUnstaked` event, state changes, double-call revert, zero-destination revert, non-admin revert, totalPenaltiesCollected tracking
+- **`scripts/sync-abis.ts`** — automated ABI sync script; run `npm run sync-abis` after any contract change
+- **`npm run sync-abis`** — package.json script added for ABI regeneration
+
+### Changed
+- **`MTAStaking.sol`** — removed unused `Staking__ZeroAmount` error (superseded by `Staking__BelowMinimum`)
+- **All ABI JSON files** — regenerated from compiled artifacts to match current contract state:
+  - `MTAStaking.abi.json`: added `stakedApyBps` field to `StakePosition` struct, added `adminUnstake`, `EmergencyUnstaked`, `RewardPoolDepleted`, `Staking__BelowMinimum`, `MIN_STAKE_AMOUNT`, `MAX_LOCK_DURATION`; removed `Staking__ZeroAmount`
+  - `MTAToken.abi.json`, `MTAVesting.abi.json`, `MTAGovernor.abi.json`: regenerated from artifacts
+- **`staking/page.tsx`** — inline `getPosition` ABI updated with `stakedApyBps` field; added 1 MTA minimum stake validation with user-friendly error message; "No minimum" → "1 MTA"
+- **`governance/page.tsx`** — Voting delay/period display changed from block-based ("7,200 blocks") to timestamp-based ("24h", "7 days") to match EIP-6372 timestamp clock implementation
+- **`analytics/page.tsx`** — staking tier "No minimum" updated to "1 MTA"
+- **`.solhint.json`** — removed non-existent Solhint 5.x rules (`contract-name-camelcase`, `event-name-camelcase`)
+- **`package.json`** version → `2.1.0-rc3`
+
+### Fixed
+- **Test failures**: `Staking__ZeroAmount` → `Staking__BelowMinimum` in unit and fuzz tests (2 tests fixed)
+
+### Tests
+- **Total: 180/180** (↑ from 170, added 10 adminUnstake tests)
+- MTAToken: 35 · MTAVesting: 40 · MTAStaking: 61 · MTAGovernor: 24 · Integration: 19 · Fuzz: 26 (5 corrected: zero-amount → BelowMinimum)
+
+---
+
 ## [2.0.0-rc1] — 2026-06-29
 
 ### Added

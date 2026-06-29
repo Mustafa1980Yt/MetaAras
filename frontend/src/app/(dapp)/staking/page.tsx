@@ -33,6 +33,7 @@ const STAKING_ABI = [
     type: 'tuple', components: [
       { name: 'amount',         type: 'uint256' },
       { name: 'claimedRewards', type: 'uint256' },
+      { name: 'stakedApyBps',   type: 'uint256' },
       { name: 'startTime',      type: 'uint48' },
       { name: 'unlockTime',     type: 'uint48' },
       { name: 'lastClaimTime',  type: 'uint48' },
@@ -185,6 +186,7 @@ export default function StakingPage() {
 
   function handleStake() {
     if (!amount || parseFloat(amount) <= 0) { toast.error('Enter a valid amount'); return; }
+    if (parseFloat(amount) < 1) { toast.error('Minimum stake is 1 MTA'); return; }
     writeContract(
       { address: stakingAddress, abi: [{ name: 'stake', type: 'function', stateMutability: 'nonpayable', inputs: [{ name: 'amount', type: 'uint256' }, { name: 'tier', type: 'uint8' }], outputs: [] }] as const, functionName: 'stake', args: [amountBig, TIER_ENUM[selectedTier]] },
       { onSuccess: () => { toast.success('Stake submitted!'); setAmount(''); }, onError: e => toast.error(e.message.slice(0, 60)) },
@@ -244,7 +246,7 @@ export default function StakingPage() {
                   </div>
                   <div className="space-y-1 text-xs text-[var(--text-muted)]">
                     <div className="flex justify-between"><span>Lock period</span><span className="text-[var(--text-secondary)]">{formatDuration(t.lockDays)}</span></div>
-                    <div className="flex justify-between"><span>Min amount</span><span className="text-[var(--text-secondary)]">No minimum</span></div>
+                    <div className="flex justify-between"><span>Min amount</span><span className="text-[var(--text-secondary)]">1 MTA</span></div>
                   </div>
                 </button>
               ))}

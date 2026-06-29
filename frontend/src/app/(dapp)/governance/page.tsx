@@ -187,8 +187,8 @@ export default function GovernancePage() {
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-8">
         <StatCard label="Voting Power"    value={`${userVotes ?? '—'} MTA`}  icon={<Vote className="w-5 h-5" />}     accentColor="#6366f1" />
         <StatCard label="MTA Balance"     value={`${userBalance ?? '—'} MTA`} icon={<Shield className="w-5 h-5" />}  accentColor="#a78bfa" />
-        <StatCard label="Voting Delay"    value={govDelay ? `${Number(govDelay).toLocaleString()} blocks` : '7,200 blocks'} icon={<Clock className="w-5 h-5" />} accentColor="#22d3ee" />
-        <StatCard label="Voting Period"   value={govPeriod ? `${Number(govPeriod).toLocaleString()} blocks` : '50,400 blocks'} icon={<BarChart3 className="w-5 h-5" />} accentColor="#34d399" />
+        <StatCard label="Voting Delay"    value={govDelay ? `${(Number(govDelay) / 3600).toFixed(0)}h` : '24h'} icon={<Clock className="w-5 h-5" />} accentColor="#22d3ee" />
+        <StatCard label="Voting Period"   value={govPeriod ? `${(Number(govPeriod) / 86400).toFixed(0)} days` : '7 days'} icon={<BarChart3 className="w-5 h-5" />} accentColor="#34d399" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -274,8 +274,8 @@ export default function GovernancePage() {
                 {[
                   { label: 'Proposal threshold', value: '500K MTA' },
                   { label: 'Quorum',             value: '4% (4M MTA)' },
-                  { label: 'Voting delay',        value: '~24h (7200 blocks)' },
-                  { label: 'Voting period',       value: '~7 days (50400 blocks)' },
+                  { label: 'Voting delay',        value: '24 hours (86,400 s)' },
+                  { label: 'Voting period',       value: '7 days (604,800 s)' },
                   { label: 'Timelock delay',      value: '48 hours' },
                 ].map(({ label, value }) => (
                   <div key={label} className="flex justify-between">

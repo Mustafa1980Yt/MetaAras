@@ -1,6 +1,6 @@
 {
   "name": "metaaras",
-  "version": "2.0.0-rc1",
+  "version": "2.1.0-rc3",
   "description": "MetaAras (MTA) - Professional Web3 Token Project",
   "main": "index.js",
   "scripts": {
@@ -49,7 +49,8 @@
     "state:mainnet": "hardhat run scripts/utils/verify_state.ts --network mainnet",
     "state:bsc": "hardhat run scripts/utils/verify_state.ts --network bsc",
     "liquidity:pancakeswap": "hardhat run scripts/liquidity/add_pancakeswap_liquidity.ts --network bsc",
-    "liquidity:uniswap": "hardhat run scripts/liquidity/add_uniswap_liquidity.ts --network mainnet"
+    "liquidity:uniswap": "hardhat run scripts/liquidity/add_uniswap_liquidity.ts --network mainnet",
+    "sync-abis": "ts-node scripts/sync-abis.ts"
   },
   "keywords": [
     "ethereum",

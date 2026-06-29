@@ -95,6 +95,30 @@ jobs:
       - name: Fuzz testleri
         run: npx hardhat test test/fuzz/MTAStaking.fuzz.test.ts
 
+  # ─── ABI Sync Dogrulama ─────────────────────────────────────────────────────
+  abi-sync:
+    name: ABI Sync Check
+    runs-on: ubuntu-latest
+    needs: compile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+      - run: npm ci
+      - name: Artifact indir
+        uses: actions/download-artifact@v4
+        with:
+          name: hardhat-artifacts
+          path: .
+      - name: ABI sync kontrol
+        run: ts-node scripts/sync-abis.ts
+      - name: ABI degisiklik yok mu
+        run: |
+          git diff --exit-code frontend/src/lib/contracts/*.abi.json || \
+          (echo "ABI dosyalari guncel degil! 'npm run sync-abis' calistirip commit edin." && exit 1)
+
   # ─── Static Analysis ─────────────────────────────────────────────────────
   slither:
     name: Slither Static Analysis

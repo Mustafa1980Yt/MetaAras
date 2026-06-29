@@ -182,7 +182,7 @@ export default function AnalyticsPage() {
                 </div>
                 <div className="space-y-2 text-xs text-[var(--text-muted)]">
                   <div className="flex justify-between"><span>Lock Days</span><span className="text-[var(--text-secondary)]">{t.lockDays}d</span></div>
-                  <div className="flex justify-between"><span>Min Amount</span><span className="text-[var(--text-secondary)]">No minimum</span></div>
+                  <div className="flex justify-between"><span>Min Amount</span><span className="text-[var(--text-secondary)]">1 MTA</span></div>
                   <div className="flex justify-between"><span>Early Exit</span><span className="text-red-400">20% penalty</span></div>
                 </div>
                 <div className="mt-3">

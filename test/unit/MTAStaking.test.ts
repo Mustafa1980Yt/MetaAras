@@ -500,4 +500,90 @@ describe("MTAStaking", () => {
       ).to.be.revertedWithCustomError(token, "MTA__Blacklisted");
     });
   });
+
+  // ─── adminUnstake ──────────────────────────────────────────────────────────
+  describe("adminUnstake", () => {
+    beforeEach(async () => {
+      await staking.connect(user1).stake(STAKE_AMOUNT, Gold); // positionId 0, 180d lock
+    });
+
+    it("admin can force-unstake an active position to a different address", async () => {
+      const destBefore = await token.balanceOf(user2.address);
+      await staking.connect(admin).adminUnstake(user1.address, 0, user2.address);
+      const destAfter = await token.balanceOf(user2.address);
+
+      // Early exit: user gets 80% of principal
+      const expected = (STAKE_AMOUNT * 8_000n) / 10_000n;
+      expect(destAfter - destBefore).to.equal(expected);
+    });
+
+    it("adminUnstake with early exit: penalty goes to rewardsPool", async () => {
+      const poolBefore = await token.balanceOf(rewardsPool.address);
+      await staking.connect(admin).adminUnstake(user1.address, 0, user2.address);
+      const poolAfter = await token.balanceOf(rewardsPool.address);
+
+      const penalty = (STAKE_AMOUNT * 2_000n) / 10_000n; // 20%
+      expect(poolAfter - poolBefore).to.equal(penalty);
+    });
+
+    it("adminUnstake after lock: no penalty", async () => {
+      await time.increase(LOCK_180D + 1);
+      const destBefore = await token.balanceOf(user2.address);
+      await staking.connect(admin).adminUnstake(user1.address, 0, user2.address);
+      const destAfter = await token.balanceOf(user2.address);
+
+      expect(destAfter - destBefore).to.equal(STAKE_AMOUNT);
+    });
+
+    it("adminUnstake emits EmergencyUnstaked event", async () => {
+      await expect(
+        staking.connect(admin).adminUnstake(user1.address, 0, user2.address)
+      ).to.emit(staking, "EmergencyUnstaked")
+        .withArgs(user1.address, 0, user2.address, (STAKE_AMOUNT * 8_000n) / 10_000n);
+    });
+
+    it("adminUnstake marks position as inactive", async () => {
+      await staking.connect(admin).adminUnstake(user1.address, 0, user2.address);
+      const pos = await staking.getPosition(user1.address, 0);
+      expect(pos.active).to.be.false;
+      expect(pos.amount).to.equal(0n);
+    });
+
+    it("adminUnstake decrements globalTotalStaked", async () => {
+      const before = await staking.globalTotalStaked();
+      await staking.connect(admin).adminUnstake(user1.address, 0, user2.address);
+      const after = await staking.globalTotalStaked();
+      expect(before - after).to.equal(STAKE_AMOUNT);
+    });
+
+    it("adminUnstake reverts for inactive position", async () => {
+      // First unstake normally
+      await time.increase(LOCK_180D + 1);
+      await staking.connect(user1).unstake(0);
+      // Now adminUnstake should revert
+      await expect(
+        staking.connect(admin).adminUnstake(user1.address, 0, user2.address)
+      ).to.be.revertedWithCustomError(staking, "Staking__PositionNotActive");
+    });
+
+    it("adminUnstake reverts for zero destination", async () => {
+      await expect(
+        staking.connect(admin).adminUnstake(user1.address, 0, ZeroAddress)
+      ).to.be.revertedWithCustomError(staking, "Staking__ZeroAddress");
+    });
+
+    it("adminUnstake reverts for non-admin", async () => {
+      await expect(
+        staking.connect(user2).adminUnstake(user1.address, 0, user2.address)
+      ).to.be.revertedWithCustomError(staking, "AccessControlUnauthorizedAccount");
+    });
+
+    it("adminUnstake increments totalPenaltiesCollected", async () => {
+      const before = await staking.totalPenaltiesCollected();
+      await staking.connect(admin).adminUnstake(user1.address, 0, user2.address);
+      const after = await staking.totalPenaltiesCollected();
+      const penalty = (STAKE_AMOUNT * 2_000n) / 10_000n;
+      expect(after - before).to.equal(penalty);
+    });
+  });
 });

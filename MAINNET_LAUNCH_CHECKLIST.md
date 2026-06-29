@@ -2,7 +2,7 @@
 
 > **Status**: Pre-Launch · External audit required before mainnet deploy  
 > **Target**: Q3 2026 · Ethereum Mainnet + BSC Mainnet  
-> **Last code review**: 2026-06-29 — 170 tests passing · 0 TypeScript errors · 0 build errors
+> **Last code review**: 2026-06-29 — 180 tests passing · 0 TypeScript errors · 0 build errors · v2.1.0-rc3
 
 ---
 
@@ -80,7 +80,7 @@
 - [ ] Re-audit of any modified code post-findings
 - [ ] Static analysis: Slither passing with no high-severity outputs
 - [ ] Solhint clean (zero warnings)
-- [x] All tests passing — 166 total (unit + integration + fuzz)
+- [x] All tests passing — 180 total (unit:160, integration:19, fuzz:26) ✓ 2026-06-29 v2.1.0-rc3
 - [ ] Gas report generated and reviewed
 - [ ] Foundry fuzz testing (100K+ runs) — bonus
 

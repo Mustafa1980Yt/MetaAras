@@ -72,6 +72,13 @@
         "inputs":  [
 
                    ],
+        "name":  "Vesting__CannotRelease",
+        "type":  "error"
+    },
+    {
+        "inputs":  [
+
+                   ],
         "name":  "Vesting__InsufficientBalance",
         "type":  "error"
     },
