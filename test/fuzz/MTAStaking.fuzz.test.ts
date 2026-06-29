@@ -230,7 +230,7 @@ describe("MTAStaking — Fuzz / Property Tests", () => {
       for (let tier = 0; tier < 4; tier++) {
         await expect(
           staking.connect(user1).stake(0n, tier)
-        ).to.be.revertedWithCustomError(staking, "Staking__ZeroAmount");
+        ).to.be.revertedWithCustomError(staking, "Staking__BelowMinimum");
       }
     });
   });

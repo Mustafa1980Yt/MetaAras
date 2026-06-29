@@ -156,7 +156,7 @@ describe("MTAStaking", () => {
     it("should revert with zero amount", async () => {
       await expect(
         staking.connect(user1).stake(0n, Bronze)
-      ).to.be.revertedWithCustomError(staking, "Staking__ZeroAmount");
+      ).to.be.revertedWithCustomError(staking, "Staking__BelowMinimum");
     });
 
     it("should revert when paused", async () => {

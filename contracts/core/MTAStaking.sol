@@ -62,10 +62,17 @@ contract MTAStaking is
      * @dev    Timestamps are `uint48` to pack three fields into one storage slot alongside
      *         `claimedRewards`, saving 3 SSTORE/SLOAD operations versus using `uint256`.
      *         uint48 max ≈ year 10 895 AD, so overflow is not a practical concern.
+     *
+     *         `stakedApyBps` is snapshotted at stake time and never mutated.
+     *         This ensures each position earns the APY it was offered, regardless of
+     *         future `updateTierConfig` calls (protects user from retrospective APY cuts).
+     *         Positions created before this field was introduced will have stakedApyBps == 0;
+     *         `_pendingRewards` falls back to the live tier config for backward compatibility.
      */
     struct StakePosition {
         uint256 amount;         // Staked token amount (wei)
         uint256 claimedRewards; // Lifetime rewards paid from this position (wei)
+        uint256 stakedApyBps;   // APY locked at stake time (0 = pre-upgrade, uses live config)
         uint48  startTime;      // Stake creation timestamp
         uint48  unlockTime;     // Timestamp after which no early-exit penalty applies
         uint48  lastClaimTime;  // Timestamp of most recent reward claim / compound
@@ -89,6 +96,13 @@ contract MTAStaking is
 
     /// @notice Early exit penalty: 20% of the staked amount.
     uint256 public constant EARLY_EXIT_PENALTY_BPS = 2_000;
+
+    /// @notice Minimum amount required to open a position (1 MTA). Prevents dust-spam.
+    uint256 public constant MIN_STAKE_AMOUNT = 1e18;
+
+    /// @notice Maximum allowed lock duration for any tier (5 years).
+    ///         Guards against uint48 silent truncation on unlockTime arithmetic.
+    uint256 public constant MAX_LOCK_DURATION = 1825 days;
 
     /// @dev Pre-computed denominator: BPS_DENOMINATOR × YEAR_SECONDS.
     ///      Avoids re-computing 315 360 000 000 on every reward calculation.
@@ -200,10 +214,31 @@ contract MTAStaking is
      */
     event RewardsPoolUpdated(address indexed oldPool, address indexed newPool);
 
-    // ─── Errors ────────────────────────────────────────────────────────────────
+    /**
+     * @notice Emitted when the rewards pool cannot cover pending rewards during unstake.
+     *         The principal is still returned; the reward is forfeited for this unstake.
+     * @param user        Staker who unstaked.
+     * @param positionId  Position that was closed.
+     * @param rewardLost  Reward amount that could not be transferred.
+     */
+    event RewardPoolDepleted(address indexed user, uint256 indexed positionId, uint256 rewardLost);
 
-    /// @notice Thrown when a zero stake amount is provided.
-    error Staking__ZeroAmount();
+    /**
+     * @notice Emitted when an admin force-closes a position to an alternate address.
+     *         Used to recover funds for blacklisted stakers.
+     * @param user        Original staker.
+     * @param positionId  Position that was closed.
+     * @param destination Address that received the principal.
+     * @param amount      Tokens transferred to destination.
+     */
+    event EmergencyUnstaked(
+        address indexed user,
+        uint256 indexed positionId,
+        address destination,
+        uint256 amount
+    );
+
+    // ─── Errors ────────────────────────────────────────────────────────────────
 
     /// @notice Thrown when an out-of-range tier value is supplied.
     error Staking__InvalidTier();
@@ -222,6 +257,9 @@ contract MTAStaking is
 
     /// @notice Thrown when `updateTierConfig` receives a zero lock duration.
     error Staking__InvalidLockDuration();
+
+    /// @notice Thrown when the stake amount is below MIN_STAKE_AMOUNT.
+    error Staking__BelowMinimum();
 
     // ─── Initializer ───────────────────────────────────────────────────────────
 
@@ -282,21 +320,23 @@ contract MTAStaking is
         uint256 amount,
         Tier    tier
     ) external whenNotPaused nonReentrant {
-        if (amount == 0) revert Staking__ZeroAmount();
-        if (uint8(tier) > uint8(Tier.Platinum)) revert Staking__InvalidTier();
+        if (amount < MIN_STAKE_AMOUNT) revert Staking__BelowMinimum();
+        // Solidity 0.8 rejects out-of-range enum values at ABI-decode time; no explicit check needed.
 
-        uint256 positionId = positionCount[msg.sender]++;
-        uint48  now_       = uint48(block.timestamp);
-        uint48  unlock     = uint48(block.timestamp + tierConfigs[tier].lockDuration);
+        TierConfig memory cfg = tierConfigs[tier];
+        uint256 positionId    = positionCount[msg.sender]++;
+        uint48  now_          = uint48(block.timestamp);
+        uint48  unlock        = uint48(block.timestamp + cfg.lockDuration);
 
         positions[msg.sender][positionId] = StakePosition({
-            amount:         amount,
+            amount:        amount,
             claimedRewards: 0,
-            startTime:      now_,
-            unlockTime:     unlock,
-            lastClaimTime:  now_,
-            tier:           tier,
-            active:         true
+            stakedApyBps:  cfg.apyBps,   // snapshot — immune to future updateTierConfig
+            startTime:     now_,
+            unlockTime:    unlock,
+            lastClaimTime: now_,
+            tier:          tier,
+            active:        true
         });
 
         globalTotalStaked += amount;
@@ -329,29 +369,37 @@ contract MTAStaking is
         uint256 returnAmount = amount - penalty;
 
         // ── Effects (all state before any external call) ──────────────────────
-        pos.active         = false;
-        pos.amount         = 0;
-        pos.claimedRewards += pendingReward;
-        pos.lastClaimTime   = uint48(block.timestamp);
-        globalTotalStaked  -= amount;
+        pos.active        = false;
+        pos.amount        = 0;
+        pos.lastClaimTime = uint48(block.timestamp);
+        globalTotalStaked -= amount;
 
         if (penalty > 0) {
             totalPenaltiesCollected += penalty;
         }
 
         // ── Interactions ──────────────────────────────────────────────────────
-        if (pendingReward > 0) {
-            stakingToken.safeTransferFrom(rewardsPool, msg.sender, pendingReward);
-            emit RewardClaimed(msg.sender, positionId, pendingReward);
-        }
-
+        // Principal and penalty first — these MUST succeed (contract holds the tokens).
         if (penalty > 0) {
             stakingToken.safeTransfer(rewardsPool, penalty);
             emit EarlyExitPenaltyCollected(msg.sender, penalty);
         }
-
         stakingToken.safeTransfer(msg.sender, returnAmount);
         emit Unstaked(msg.sender, positionId, returnAmount, penalty);
+
+        // Reward last — conditional on pool solvency so a dry pool never blocks principal.
+        // pos.active is already false and nonReentrant is active, so updating state here is safe.
+        if (pendingReward > 0) {
+            uint256 poolBal = stakingToken.balanceOf(rewardsPool);
+            uint256 poolAlw = stakingToken.allowance(rewardsPool, address(this));
+            if (poolBal >= pendingReward && poolAlw >= pendingReward) {
+                pos.claimedRewards += pendingReward;
+                stakingToken.safeTransferFrom(rewardsPool, msg.sender, pendingReward);
+                emit RewardClaimed(msg.sender, positionId, pendingReward);
+            } else {
+                emit RewardPoolDepleted(msg.sender, positionId, pendingReward);
+            }
+        }
     }
 
     /**
@@ -409,11 +457,12 @@ contract MTAStaking is
 
     /**
      * @notice Updates the lock duration and APY for a tier.
-     * @dev    Changes take effect immediately for existing positions (pending rewards
-     *         are calculated using the new APY from the moment of this call onward,
-     *         since `lastClaimTime` does not reset). Consider calling against Timelock.
+     * @dev    APY changes apply only to NEW positions opened after this call.
+     *         Existing positions retain their `stakedApyBps` snapshot (immutable at stake time).
+     *         Lock-duration changes apply to new positions only (existing unlockTime unchanged).
+     *         Must be called through the Timelock in production to provide a 48-hour window.
      * @param tier         Tier to update.
-     * @param lockDuration New lock period in seconds; must be > 0.
+     * @param lockDuration New lock period in seconds; must be 1 s – MAX_LOCK_DURATION.
      * @param apyBps       New APY in basis points; must be 1–10 000 (0.01%–100%).
      */
     function updateTierConfig(
@@ -421,10 +470,57 @@ contract MTAStaking is
         uint256 lockDuration,
         uint256 apyBps
     ) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        if (lockDuration == 0)                        revert Staking__InvalidLockDuration();
-        if (apyBps == 0 || apyBps > BPS_DENOMINATOR) revert Staking__InvalidApyBps();
+        if (lockDuration == 0 || lockDuration > MAX_LOCK_DURATION) revert Staking__InvalidLockDuration();
+        if (apyBps == 0 || apyBps > BPS_DENOMINATOR)               revert Staking__InvalidApyBps();
         tierConfigs[tier] = TierConfig({lockDuration: lockDuration, apyBps: apyBps});
         emit TierConfigUpdated(tier, lockDuration, apyBps);
+    }
+
+    /**
+     * @notice Force-closes a position and sends principal to `destination`.
+     * @dev    Intended for blacklisted stakers whose tokens would otherwise be permanently
+     *         locked (safeTransfer to a blacklisted address reverts). Admin may redirect funds
+     *         to an address that can receive them (e.g., the staker's unblacklisted wallet
+     *         or a treasury recovery address).
+     *         Early-exit penalty applies if the lock has not elapsed.
+     *         Pending rewards are NOT transferred (pool-side transfer still requires a
+     *         non-blacklisted destination, which is handled separately by claimRewards).
+     *         CEI: all state mutations precede external calls.
+     * @param user        Original staker whose position to close.
+     * @param positionId  Position index.
+     * @param destination Address to receive the principal (must not be zero).
+     */
+    function adminUnstake(
+        address user,
+        uint256 positionId,
+        address destination
+    ) external onlyRole(DEFAULT_ADMIN_ROLE) nonReentrant {
+        if (destination == address(0)) revert Staking__ZeroAddress();
+
+        StakePosition storage pos = positions[user][positionId];
+        if (!pos.active) revert Staking__PositionNotActive();
+
+        uint256 amount  = pos.amount;
+        uint256 penalty = 0;
+        if (block.timestamp < pos.unlockTime) {
+            penalty = (amount * EARLY_EXIT_PENALTY_BPS) / BPS_DENOMINATOR;
+        }
+        uint256 returnAmount = amount - penalty;
+
+        // Effects
+        pos.active        = false;
+        pos.amount        = 0;
+        pos.lastClaimTime = uint48(block.timestamp);
+        globalTotalStaked -= amount;
+        if (penalty > 0) totalPenaltiesCollected += penalty;
+
+        // Interactions
+        if (penalty > 0) {
+            stakingToken.safeTransfer(rewardsPool, penalty);
+            emit EarlyExitPenaltyCollected(user, penalty);
+        }
+        stakingToken.safeTransfer(destination, returnAmount);
+        emit EmergencyUnstaked(user, positionId, destination, returnAmount);
     }
 
     /**
@@ -491,12 +587,13 @@ contract MTAStaking is
     /**
      * @dev  Computes pending reward for an active position.
      *       Formula: amount × apyBps × elapsed / (BPS_DENOMINATOR × YEAR_SECONDS)
-     *       Using pre-computed `PRECISION_DIVISOR` avoids re-multiplying the denominator
-     *       on every call, saving ~200 gas per invocation.
+     *       Uses `pos.stakedApyBps` (snapshotted at stake time) so that tier config updates
+     *       do not retroactively affect existing positions. Falls back to the live tier config
+     *       for positions created before the snapshot field was introduced (stakedApyBps == 0).
      */
     function _pendingRewards(StakePosition storage pos) private view returns (uint256) {
         uint256 elapsed = block.timestamp - pos.lastClaimTime;
-        uint256 apyBps  = tierConfigs[pos.tier].apyBps;
+        uint256 apyBps  = pos.stakedApyBps != 0 ? pos.stakedApyBps : tierConfigs[pos.tier].apyBps;
         return (pos.amount * apyBps * elapsed) / PRECISION_DIVISOR;
     }
 }

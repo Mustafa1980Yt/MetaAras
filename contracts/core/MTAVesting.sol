@@ -154,6 +154,9 @@ contract MTAVesting is AccessControl, ReentrancyGuard {
     /// @notice Thrown when `startTime` is set to a timestamp in the past.
     error Vesting__StartTimeInPast();
 
+    /// @notice Thrown when the beneficiary is unable to receive tokens (e.g. blacklisted).
+    error Vesting__CannotRelease();
+
     // ─── Constructor ───────────────────────────────────────────────────────────
 
     /**
