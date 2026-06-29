@@ -31,12 +31,13 @@ const STAKING_ABI = [
   { name: 'compound',       type: 'function', stateMutability: 'nonpayable', inputs: [{ name: 'positionId', type: 'uint256' }], outputs: [] },
   { name: 'getPosition',    type: 'function', stateMutability: 'view', inputs: [{ name: 'user', type: 'address' }, { name: 'positionId', type: 'uint256' }], outputs: [{
     type: 'tuple', components: [
-      { name: 'amount',        type: 'uint256' },
-      { name: 'tier',          type: 'uint8' },
-      { name: 'startTime',     type: 'uint48' },
-      { name: 'lockEnd',       type: 'uint48' },
-      { name: 'lastClaimTime', type: 'uint48' },
-      { name: 'active',        type: 'bool' },
+      { name: 'amount',         type: 'uint256' },
+      { name: 'claimedRewards', type: 'uint256' },
+      { name: 'startTime',      type: 'uint48' },
+      { name: 'unlockTime',     type: 'uint48' },
+      { name: 'lastClaimTime',  type: 'uint48' },
+      { name: 'tier',           type: 'uint8' },
+      { name: 'active',         type: 'bool' },
     ],
   }]},
   { name: 'pendingRewards', type: 'function', stateMutability: 'view', inputs: [{ name: 'user', type: 'address' }, { name: 'positionId', type: 'uint256' }], outputs: [{ type: 'uint256' }] },
@@ -54,12 +55,12 @@ function PositionCard({
   if (!pos.active) return null;
 
   const now      = Math.floor(Date.now() / 1000);
-  const unlocked = now >= Number(pos.lockEnd);
+  const unlocked = now >= Number(pos.unlockTime);
   const tierName = TIER_NAMES[pos.tier] ?? 'Unknown';
   const tierColor = TIER_COLORS[tierName as keyof typeof TIER_COLORS] ?? '#6366f1';
   const tierInfo  = STAKING_TIERS.find(t => t.name === tierName);
   const elapsed   = now - Number(pos.startTime);
-  const total     = Number(pos.lockEnd) - Number(pos.startTime);
+  const total     = Number(pos.unlockTime) - Number(pos.startTime);
   const progress  = Math.min(100, Math.floor((elapsed / total) * 100));
 
   const call = (fn: 'claimRewards' | 'unstake' | 'compound') =>
@@ -70,6 +71,18 @@ function PositionCard({
         onError:   (e) => toast.error(e.message.slice(0, 60)),
       },
     );
+
+  function handleUnstake() {
+    if (!unlocked) {
+      const confirmed = window.confirm(
+        '⚠️ Early Exit Warning\n\nYour lock period has not ended yet.\n' +
+        'Unstaking now will incur a 20% penalty on your principal.\n\n' +
+        'Are you sure you want to exit early?'
+      );
+      if (!confirmed) return;
+    }
+    call('unstake');
+  }
 
   return (
     <Card glow className="relative overflow-hidden">
@@ -114,7 +127,7 @@ function PositionCard({
         </div>
         <div>
           <p className="text-xs text-[var(--text-muted)]">Unlocks</p>
-          <p className="text-[var(--text-secondary)]">{formatDate(Number(pos.lockEnd))}</p>
+          <p className="text-[var(--text-secondary)]">{formatDate(Number(pos.unlockTime))}</p>
         </div>
       </div>
 
@@ -126,11 +139,10 @@ function PositionCard({
           <RefreshCw className="w-3.5 h-3.5" /> Compound
         </Button>
         <Button
-          variant="secondary" size="sm" onClick={() => call('unstake')} loading={isPending}
-          disabled={!unlocked}
-          className="flex-1 text-red-400 border-red-500/30 hover:bg-red-500/10 disabled:opacity-40"
+          variant="secondary" size="sm" onClick={handleUnstake} loading={isPending}
+          className={`flex-1 border-red-500/30 hover:bg-red-500/10 ${unlocked ? 'text-red-400' : 'text-amber-400 border-amber-500/30 hover:bg-amber-500/10'}`}
         >
-          <LogOut className="w-3.5 h-3.5" /> Unstake
+          <LogOut className="w-3.5 h-3.5" /> {unlocked ? 'Unstake' : 'Exit (−20%)'}
         </Button>
       </div>
     </Card>

@@ -1,14 +1,16 @@
 'use client';
 
+import { useState } from 'react';
 import { useAccount, useReadContract, useWriteContract, useChainId } from 'wagmi';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
-import { Vote, Shield, Clock, BarChart3, ExternalLink } from 'lucide-react';
+import { Vote, Shield, Clock, BarChart3, CheckCircle, XCircle, MinusCircle } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { StatCard } from '@/components/ui/StatCard';
 import { useTokenData } from '@/hooks/useTokenData';
 import { getContractAddresses } from '@/constants/contracts';
+import toast from 'react-hot-toast';
 
 const MTA_ABI = [
   { name: 'delegate', type: 'function', stateMutability: 'nonpayable', inputs: [{ name: 'delegatee', type: 'address' }], outputs: [] },
@@ -16,23 +18,108 @@ const MTA_ABI = [
 ] as const;
 
 const GOV_ABI = [
-  { name: 'proposalCount', type: 'function', stateMutability: 'view', inputs: [], outputs: [{ type: 'uint256' }] },
-  { name: 'votingDelay',   type: 'function', stateMutability: 'view', inputs: [], outputs: [{ type: 'uint256' }] },
-  { name: 'votingPeriod',  type: 'function', stateMutability: 'view', inputs: [], outputs: [{ type: 'uint256' }] },
+  { name: 'votingDelay',     type: 'function', stateMutability: 'view', inputs: [], outputs: [{ type: 'uint256' }] },
+  { name: 'votingPeriod',    type: 'function', stateMutability: 'view', inputs: [], outputs: [{ type: 'uint256' }] },
   { name: 'quorumNumerator', type: 'function', stateMutability: 'view', inputs: [], outputs: [{ type: 'uint256' }] },
+  {
+    name: 'castVote', type: 'function', stateMutability: 'nonpayable',
+    inputs: [{ name: 'proposalId', type: 'uint256' }, { name: 'support', type: 'uint8' }],
+    outputs: [{ type: 'uint256' }],
+  },
+  {
+    name: 'hasVoted', type: 'function', stateMutability: 'view',
+    inputs: [{ name: 'proposalId', type: 'uint256' }, { name: 'account', type: 'address' }],
+    outputs: [{ type: 'bool' }],
+  },
+  {
+    name: 'proposalVotes', type: 'function', stateMutability: 'view',
+    inputs: [{ name: 'proposalId', type: 'uint256' }],
+    outputs: [{ name: 'againstVotes', type: 'uint256' }, { name: 'forVotes', type: 'uint256' }, { name: 'abstainVotes', type: 'uint256' }],
+  },
+  {
+    name: 'state', type: 'function', stateMutability: 'view',
+    inputs: [{ name: 'proposalId', type: 'uint256' }],
+    outputs: [{ type: 'uint8' }],
+  },
 ] as const;
 
-
-const MOCK_PROPOSALS = [
-  { id: '1', title: 'Update Bronze tier APY from 8% to 10%',       status: 'Active',   votes: { for: 3_200_000, against: 800_000, abstain: 50_000 } },
-  { id: '2', title: 'Allocate 500K MTA to ecosystem grants Q3',    status: 'Succeeded', votes: { for: 5_000_000, against: 200_000, abstain: 100_000 } },
-  { id: '3', title: 'Upgrade MTAStaking to v2 implementation',     status: 'Pending',  votes: { for: 0, against: 0, abstain: 0 } },
-  { id: '4', title: 'Reduce Timelock delay from 48h to 24h',       status: 'Defeated', votes: { for: 1_000_000, against: 4_500_000, abstain: 300_000 } },
-] as const;
+// ProposalState enum from OpenZeppelin Governor
+const PROPOSAL_STATES = ['Pending', 'Active', 'Canceled', 'Defeated', 'Succeeded', 'Queued', 'Expired', 'Executed'] as const;
 
 const statusVariant: Record<string, 'success' | 'brand' | 'warning' | 'danger' | 'default'> = {
-  Active: 'brand', Succeeded: 'success', Pending: 'warning', Defeated: 'danger', Executed: 'success',
+  Active: 'brand', Succeeded: 'success', Pending: 'warning', Defeated: 'danger',
+  Executed: 'success', Queued: 'warning', Canceled: 'danger', Expired: 'danger',
 };
+
+// Real on-chain proposals — add proposal IDs as they're created on-chain
+// Format: { id: bigint (on-chain proposalId), title: string, descriptionHash: string }
+const KNOWN_PROPOSALS: { id: bigint; title: string }[] = [
+  // Add real proposal IDs here once governance is live on mainnet
+  // Example: { id: 12345678901234567890n, title: 'Proposal: Update Bronze tier APY' }
+];
+
+function ProposalCard({
+  proposalId, title, governorAddress, userAddress, onVote,
+}: { proposalId: bigint; title: string; governorAddress: `0x${string}`; userAddress?: `0x${string}`; onVote: (id: bigint, support: number) => void }) {
+  const { data: stateRaw } = useReadContract({ address: governorAddress, abi: GOV_ABI, functionName: 'state', args: [proposalId] });
+  const { data: votes }    = useReadContract({ address: governorAddress, abi: GOV_ABI, functionName: 'proposalVotes', args: [proposalId] });
+  const { data: hasVoted } = useReadContract({ address: governorAddress, abi: GOV_ABI, functionName: 'hasVoted', args: userAddress ? [proposalId, userAddress] : undefined, query: { enabled: !!userAddress } });
+
+  const stateNum   = stateRaw !== undefined ? Number(stateRaw) : undefined;
+  const stateName  = stateNum !== undefined ? (PROPOSAL_STATES[stateNum] ?? 'Unknown') : 'Loading...';
+  const isActive   = stateName === 'Active';
+
+  const forVotes     = votes ? Number(votes[1]) / 1e18 : 0;
+  const againstVotes = votes ? Number(votes[0]) / 1e18 : 0;
+  const abstainVotes = votes ? Number(votes[2]) / 1e18 : 0;
+  const totalVotes   = forVotes + againstVotes + abstainVotes;
+  const forPct       = totalVotes > 0 ? (forVotes / totalVotes) * 100 : 0;
+
+  return (
+    <Card glow>
+      <div className="flex items-start justify-between gap-3 mb-3">
+        <div>
+          <p className="text-xs text-[var(--text-muted)] mb-1 font-mono">{proposalId.toString().slice(0, 12)}…</p>
+          <h3 className="font-medium text-[var(--text-primary)]">{title}</h3>
+        </div>
+        <Badge variant={statusVariant[stateName] ?? 'default'} dot className="flex-shrink-0">
+          {stateName}
+        </Badge>
+      </div>
+
+      {totalVotes > 0 && (
+        <div className="mb-4">
+          <div className="h-2 rounded-full bg-[var(--surface-3)] overflow-hidden">
+            <div className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-emerald-400" style={{ width: `${forPct}%` }} />
+          </div>
+          <div className="flex justify-between text-xs text-[var(--text-muted)] mt-1">
+            <span className="text-emerald-400">For: {forVotes.toFixed(0)}M</span>
+            <span className="text-amber-400">Abstain: {abstainVotes.toFixed(0)}</span>
+            <span className="text-red-400">Against: {againstVotes.toFixed(0)}M</span>
+          </div>
+        </div>
+      )}
+
+      {hasVoted && (
+        <Badge variant="success" dot className="mb-3">Already voted</Badge>
+      )}
+
+      {isActive && !hasVoted && (
+        <div className="flex gap-2">
+          <Button variant="secondary" size="sm" onClick={() => onVote(proposalId, 1)} className="flex-1 border-emerald-500/30 hover:bg-emerald-500/10 text-emerald-400">
+            <CheckCircle className="w-3.5 h-3.5" /> For
+          </Button>
+          <Button variant="secondary" size="sm" onClick={() => onVote(proposalId, 2)} className="flex-1 border-amber-500/30 hover:bg-amber-500/10 text-amber-400">
+            <MinusCircle className="w-3.5 h-3.5" /> Abstain
+          </Button>
+          <Button variant="secondary" size="sm" onClick={() => onVote(proposalId, 0)} className="flex-1 border-red-500/30 hover:bg-red-500/10 text-red-400">
+            <XCircle className="w-3.5 h-3.5" /> Against
+          </Button>
+        </div>
+      )}
+    </Card>
+  );
+}
 
 export default function GovernancePage() {
   const chainId = useChainId();
@@ -48,12 +135,27 @@ export default function GovernancePage() {
   const { data: govPeriod }  = useReadContract({ address: GOVERNOR_ADDRESS, abi: GOV_ABI, functionName: 'votingPeriod' });
 
   const { writeContract, isPending } = useWriteContract();
+  const [manualProposalId, setManualProposalId] = useState('');
 
   const isSelfDelegated = delegatee?.toLowerCase() === address?.toLowerCase();
 
   function handleDelegate() {
     if (!address) return;
-    writeContract({ address: TOKEN_ADDRESS, abi: MTA_ABI, functionName: 'delegate', args: [address] });
+    writeContract(
+      { address: TOKEN_ADDRESS, abi: MTA_ABI, functionName: 'delegate', args: [address] },
+      { onSuccess: () => toast.success('Self-delegation submitted!'), onError: e => toast.error(e.message.slice(0, 60)) },
+    );
+  }
+
+  function handleVote(proposalId: bigint, support: number) {
+    const supportLabel = support === 1 ? 'For' : support === 0 ? 'Against' : 'Abstain';
+    writeContract(
+      { address: GOVERNOR_ADDRESS, abi: GOV_ABI, functionName: 'castVote', args: [proposalId, support] },
+      {
+        onSuccess: () => toast.success(`Vote cast: ${supportLabel}`),
+        onError: e => toast.error(e.message.slice(0, 80)),
+      },
+    );
   }
 
   if (!isConnected) {
@@ -67,6 +169,12 @@ export default function GovernancePage() {
         <ConnectButton />
       </div>
     );
+  }
+
+  const allProposals = [...KNOWN_PROPOSALS];
+  if (manualProposalId && /^\d+$/.test(manualProposalId)) {
+    const exists = allProposals.some(p => p.id === BigInt(manualProposalId));
+    if (!exists) allProposals.push({ id: BigInt(manualProposalId), title: `Proposal #${manualProposalId}` });
   }
 
   return (
@@ -88,51 +196,46 @@ export default function GovernancePage() {
         <div className="lg:col-span-2 space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="font-semibold text-[var(--text-primary)]">Proposals</h2>
-            <Badge variant="default">{MOCK_PROPOSALS.length} total</Badge>
+            <Badge variant="default">{allProposals.length} total</Badge>
           </div>
-          {MOCK_PROPOSALS.map(p => {
-            const totalVotes = p.votes.for + p.votes.against + p.votes.abstain;
-            const forPct = totalVotes > 0 ? (p.votes.for / totalVotes) * 100 : 0;
-            return (
-              <Card key={p.id} glow>
-                <div className="flex items-start justify-between gap-3 mb-3">
-                  <div>
-                    <p className="text-xs text-[var(--text-muted)] mb-1">Proposal #{p.id}</p>
-                    <h3 className="font-medium text-[var(--text-primary)]">{p.title}</h3>
-                  </div>
-                  <Badge variant={statusVariant[p.status] ?? 'default'} dot className="flex-shrink-0">
-                    {p.status}
-                  </Badge>
-                </div>
 
-                {totalVotes > 0 && (
-                  <div className="mb-4">
-                    <div className="h-2 rounded-full bg-[var(--surface-3)] overflow-hidden">
-                      <div
-                        className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-emerald-400"
-                        style={{ width: `${forPct}%` }}
-                      />
-                    </div>
-                    <div className="flex justify-between text-xs text-[var(--text-muted)] mt-1">
-                      <span className="text-emerald-400">For: {(p.votes.for / 1e6).toFixed(1)}M</span>
-                      <span className="text-red-400">Against: {(p.votes.against / 1e6).toFixed(1)}M</span>
-                    </div>
-                  </div>
-                )}
+          {/* Manual proposal lookup */}
+          <Card>
+            <CardContent>
+              <p className="text-xs text-[var(--text-muted)] mb-2">Enter a proposal ID to load it</p>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={manualProposalId}
+                  onChange={e => setManualProposalId(e.target.value.replace(/\D/g, ''))}
+                  placeholder="Proposal ID (numeric)"
+                  className="flex-1 px-3 py-2 text-sm rounded-xl border border-[var(--border)] bg-[var(--surface-2)] text-[var(--text-primary)] focus:outline-none focus:ring-1 focus:ring-brand-500"
+                />
+              </div>
+            </CardContent>
+          </Card>
 
-                {p.status === 'Active' && (
-                  <div className="flex gap-2">
-                    <Button variant="secondary" size="sm" className="flex-1 border-emerald-500/30 hover:bg-emerald-500/10 text-emerald-400" disabled>
-                      Vote For
-                    </Button>
-                    <Button variant="secondary" size="sm" className="flex-1 border-red-500/30 hover:bg-red-500/10 text-red-400" disabled>
-                      Vote Against
-                    </Button>
-                  </div>
-                )}
-              </Card>
-            );
-          })}
+          {allProposals.length === 0 ? (
+            <Card className="text-center py-12">
+              <Vote className="w-10 h-10 text-[var(--text-muted)] mx-auto mb-3" />
+              <h3 className="font-semibold text-[var(--text-primary)] mb-1">No proposals yet</h3>
+              <p className="text-sm text-[var(--text-muted)]">
+                Proposals will appear here once governance is live on-chain.<br />
+                You need 500K MTA to create a proposal.
+              </p>
+            </Card>
+          ) : (
+            allProposals.map(p => (
+              <ProposalCard
+                key={p.id.toString()}
+                proposalId={p.id}
+                title={p.title}
+                governorAddress={GOVERNOR_ADDRESS}
+                userAddress={address}
+                onVote={handleVote}
+              />
+            ))
+          )}
         </div>
 
         {/* Sidebar */}

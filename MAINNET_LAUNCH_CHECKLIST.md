@@ -1,7 +1,20 @@
 # MetaAras — Mainnet Launch Checklist
 
 > **Status**: Pre-Launch · External audit required before mainnet deploy  
-> **Target**: Q3 2026 · Ethereum Mainnet + BSC Mainnet
+> **Target**: Q3 2026 · Ethereum Mainnet + BSC Mainnet  
+> **Last code review**: 2026-06-29 — 164 tests passing · 0 TypeScript errors · 0 build errors
+
+---
+
+## Completed (Code Quality — 2026-06-29)
+
+- [x] **StakePosition ABI mismatch** fixed in `frontend/src/app/(dapp)/staking/page.tsx` — `claimedRewards` field added, field order corrected, `lockEnd` → `unlockTime` renamed
+- [x] **Early exit UX** — Unstake button now shows "Exit (−20%)" with amber warning dialog when locked; "Unstake" with red color when unlocked
+- [x] **Governance page** — Mock data removed; real on-chain `castVote` / `hasVoted` / `proposalVotes` / `state` calls wired up; voting buttons enabled; manual proposal ID lookup added
+- [x] **Integration tests** — `test/integration/MTAProtocol.test.ts` created (Flow 1: Vesting, Flow 2: Staking, Flow 3: Security, Flow 4: Max Supply, Flow 5: Governance, Flow 6: Vesting→Staking)
+- [x] **Fuzz tests** — `test/fuzz/MTAStaking.fuzz.test.ts` created (reward formula, APY ordering, penalty exactness, TVL consistency, double-unstake, claim reset, zero-amount)
+- [x] **All 164 tests passing** (`npx hardhat test` — 0 failures)
+- [x] **Frontend build clean** (`npm run build` — 0 TypeScript errors, 24 routes generated)
 
 ---
 
@@ -41,7 +54,7 @@
 - [ ] Re-audit of any modified code post-findings
 - [ ] Static analysis: Slither passing with no high-severity outputs
 - [ ] Solhint clean (zero warnings)
-- [ ] All 119+ unit tests passing
+- [x] All tests passing — 164 total (unit + integration + fuzz)
 - [ ] Gas report generated and reviewed
 - [ ] Foundry fuzz testing (100K+ runs) — bonus
 
