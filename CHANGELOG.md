@@ -5,6 +5,30 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [2.2.0-rc1] — 2026-06-29
+
+### Security (Critical)
+- **`MTAStaking.sol` UPGRADER_ROLE backdoor closed** — `05_post_deploy.ts` now transfers `UPGRADER_ROLE` to the Timelock (governance-gated upgrades) and revokes it from the deployer; 2 new verification checks added
+- **`MTAVesting.sol` blacklisted-beneficiary rescue** — Added `adminEmergencyRelease(scheduleId, destination)`: redirects vested tokens when beneficiary is blacklisted; works for revocable and non-revocable schedules; 8 tests
+- **`MTAVesting.sol` excess token recovery** — Added `withdrawExcess(destination)`: recovers tokens sent directly to contract beyond `totalVestingAmount`; 6 tests; `Vesting__NoExcess` error
+- **CSP header** — `next.config.ts` now sets `Content-Security-Policy` (default-src, script-src, connect-src, frame-src WalletConnect, object-src 'none', base-uri 'self')
+
+### Added
+- `Vesting__NoExcess` custom error (replaces unused `Vesting__CannotRelease`)
+- `EmergencyReleased(scheduleId, destination, amount)` event
+- `ExcessWithdrawn(destination, amount)` event
+- 14 new MTAVesting tests
+
+### Changed
+- `05_post_deploy.ts` — UPGRADER_ROLE: granted to Timelock, revoked from deployer, 2 extra verification checks, `upgradeTarget` in deployment JSON
+- `SECURITY_CHECKLIST.md` v1.1 — items 29-31, 43, 49 added/updated; total 60→64, done 36→45
+- `package.json` version → `2.2.0-rc1`
+
+### Tests
+- **Total: 194/194** (↑ from 180, +14 MTAVesting)
+
+---
+
 ## [2.1.0-rc3] — 2026-06-29
 
 ### Added

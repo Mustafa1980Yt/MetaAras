@@ -122,6 +122,21 @@ contract MTAVesting is AccessControl, ReentrancyGuard {
         uint256 returned
     );
 
+    /**
+     * @notice Emitted when an admin redirects vested tokens to an alternate address.
+     * @param scheduleId  Source schedule.
+     * @param destination Address that received the tokens (instead of the beneficiary).
+     * @param amount      Tokens transferred.
+     */
+    event EmergencyReleased(bytes32 indexed scheduleId, address indexed destination, uint256 amount);
+
+    /**
+     * @notice Emitted when excess tokens (beyond totalVestingAmount) are recovered.
+     * @param destination Address that received the excess tokens.
+     * @param amount      Tokens transferred.
+     */
+    event ExcessWithdrawn(address indexed destination, uint256 amount);
+
     // ─── Errors ────────────────────────────────────────────────────────────────
 
     /// @notice Thrown when a zero address is provided.
@@ -154,8 +169,8 @@ contract MTAVesting is AccessControl, ReentrancyGuard {
     /// @notice Thrown when `startTime` is set to a timestamp in the past.
     error Vesting__StartTimeInPast();
 
-    /// @notice Thrown when the beneficiary is unable to receive tokens (e.g. blacklisted).
-    error Vesting__CannotRelease();
+    /// @notice Thrown when there are no excess tokens to withdraw.
+    error Vesting__NoExcess();
 
     // ─── Constructor ───────────────────────────────────────────────────────────
 
@@ -287,6 +302,57 @@ contract MTAVesting is AccessControl, ReentrancyGuard {
         }
 
         emit ScheduleRevoked(scheduleId, schedule.beneficiary, refund);
+    }
+
+    /**
+     * @notice Force-releases currently vested tokens to an alternate `destination`.
+     * @dev    Use when the beneficiary is blacklisted on the MTA token and cannot receive
+     *         a direct transfer (safeTransfer to a blacklisted address reverts).
+     *         Works for both revocable and non-revocable schedules; the schedule is NOT
+     *         cancelled — the beneficiary can still claim future vesting tranches once
+     *         unblacklisted (or the admin calls this again for those tranches).
+     *         CEI: state mutations precede the external call.
+     * @param scheduleId  The schedule from which to release.
+     * @param destination Alternate recipient address (must not be zero).
+     */
+    function adminEmergencyRelease(
+        bytes32 scheduleId,
+        address destination
+    ) external onlyRole(VESTING_ADMIN_ROLE) nonReentrant {
+        if (destination == address(0)) revert Vesting__ZeroAddress();
+
+        VestingSchedule storage schedule = _schedules[scheduleId];
+        if (schedule.beneficiary == address(0)) revert Vesting__ScheduleNotFound();
+        if (schedule.revoked)                   revert Vesting__AlreadyRevoked();
+
+        uint256 releasable = _releasableAmount(schedule);
+        if (releasable == 0) revert Vesting__NothingToRelease();
+
+        // CEI: effects before interaction
+        schedule.released  += releasable;
+        totalVestingAmount -= releasable;
+
+        token.safeTransfer(destination, releasable);
+
+        emit EmergencyReleased(scheduleId, destination, releasable);
+    }
+
+    /**
+     * @notice Withdraws any tokens held by this contract that exceed `totalVestingAmount`.
+     * @dev    Excess can arise from direct token transfers to this address that were not
+     *         matched by a `createSchedule` call.  Only non-committed tokens are withdrawn.
+     *         Committed (scheduled) tokens are never touched.
+     * @param destination Recipient of the excess tokens (must not be zero).
+     */
+    function withdrawExcess(
+        address destination
+    ) external onlyRole(DEFAULT_ADMIN_ROLE) nonReentrant {
+        if (destination == address(0)) revert Vesting__ZeroAddress();
+        uint256 balance = token.balanceOf(address(this));
+        if (balance <= totalVestingAmount) revert Vesting__NoExcess();
+        uint256 excess = balance - totalVestingAmount;
+        token.safeTransfer(destination, excess);
+        emit ExcessWithdrawn(destination, excess);
     }
 
     // ─── External: View ────────────────────────────────────────────────────────

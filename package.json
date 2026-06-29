@@ -1,6 +1,6 @@
 {
   "name": "metaaras",
-  "version": "2.1.0-rc3",
+  "version": "2.2.0-rc1",
   "description": "MetaAras (MTA) - Professional Web3 Token Project",
   "main": "index.js",
   "scripts": {

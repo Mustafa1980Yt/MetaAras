@@ -1,7 +1,7 @@
 # MetaAras (MTA) — Security Checklist
 
-**Version:** 1.0  
-**Last Updated:** 2026-06-28  
+**Version:** 1.1  
+**Last Updated:** 2026-06-29  
 **Status:** Pre-Audit
 
 ---
@@ -52,7 +52,7 @@ Each item must be ✅ before mainnet deployment is approved.
 |---|------|--------|-------|
 | 13 | No calls to untrusted external contracts | ✅ | Only MTA token interactions |
 | 14 | Return values of external calls checked | ✅ | SafeERC20 handles this |
-| 15 | No delegate call in user-facing contracts | ✅ | No proxy patterns in staking/vesting |
+| 15 | No delegate call in user-facing contracts | ✅ | Only MTAStaking uses UUPS proxy — upgrade gated by UPGRADER_ROLE (Timelock) |
 
 ### 1.5 Token Handling
 
@@ -81,6 +81,9 @@ Each item must be ✅ before mainnet deployment is approved.
 | 26 | Staking pause mechanism | ✅ | Admin via multisig |
 | 27 | Vesting revocation for individual schedules | ✅ | Admin can revoke, earned tokens protected |
 | 28 | Governance proposal cancellation | ✅ | Proposer + timelock |
+| 29 | Staking emergency unstake (blacklisted users) | ✅ | `adminUnstake()` with alternate destination |
+| 30 | Vesting emergency release (blacklisted beneficiary) | ✅ | `adminEmergencyRelease()` with alternate destination |
+| 31 | Vesting excess token recovery | ✅ | `withdrawExcess()` recovers tokens beyond totalVestingAmount |
 
 ---
 
@@ -116,6 +119,7 @@ Each item must be ✅ before mainnet deployment is approved.
 | 40 | Deployment scripts have mainnet guard | ✅ | 00_deploy_all.ts rejects mainnet |
 | 41 | Contract addresses verified post-deploy | ✅ | verify_all.ts script |
 | 42 | Constructor arguments verified on block explorer | ⏳ | After testnet deploy |
+| 43 | UPGRADER_ROLE transferred to Timelock post-deploy | ✅ | 05_post_deploy.ts transfers UPGRADER_ROLE to Timelock (2026-06-29) |
 
 ---
 
@@ -129,7 +133,7 @@ Each item must be ✅ before mainnet deployment is approved.
 | 46 | No XSS vulnerabilities | ✅ | React JSX escaping |
 | 47 | No sensitive data in localStorage | ✅ | Only wagmi connection state |
 | 48 | HTTPS enforced in production | ⏳ | Infrastructure requirement |
-| 49 | Content Security Policy headers | ⏳ | Next.js headers config |
+| 49 | Content Security Policy headers | ✅ | Added to next.config.ts (2026-06-29); allows RPC + WalletConnect |
 | 50 | Wallet connection errors handled gracefully | ✅ | RainbowKit error handling |
 
 ---
@@ -162,14 +166,14 @@ Each item must be ✅ before mainnet deployment is approved.
 
 | Category | Total | Done | Pending |
 |----------|-------|------|---------|
-| Smart Contract Security | 28 | 20 | 8 |
+| Smart Contract Security | 31 | 26 | 5 |
 | Static Analysis | 4 | 1 | 3 |
 | External Audit | 4 | 0 | 4 |
-| Deployment Security | 6 | 4 | 2 |
-| Frontend Security | 8 | 6 | 2 |
+| Deployment Security | 7 | 6 | 1 |
+| Frontend Security | 8 | 7 | 1 |
 | Operational Security | 5 | 0 | 5 |
 | Dependencies | 5 | 5 | 0 |
-| **Total** | **60** | **36** | **24** |
+| **Total** | **64** | **45** | **19** |
 
 **Pre-Mainnet Blockers (must be ✅):** Items 3, 4, 5, 33, 35, 36, 48, 51, 52, 53
 

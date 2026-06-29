@@ -33,6 +33,7 @@ const PAUSER_ROLE        = ethers.keccak256(ethers.toUtf8Bytes("PAUSER_ROLE"));
 const BLACKLISTER_ROLE   = ethers.keccak256(ethers.toUtf8Bytes("BLACKLISTER_ROLE"));
 const MINTER_ROLE        = ethers.keccak256(ethers.toUtf8Bytes("MINTER_ROLE"));
 const VESTING_ADMIN_ROLE = ethers.keccak256(ethers.toUtf8Bytes("VESTING_ADMIN_ROLE"));
+const UPGRADER_ROLE      = ethers.keccak256(ethers.toUtf8Bytes("UPGRADER_ROLE"));
 const ADMIN_ROLE         = ethers.ZeroHash; // DEFAULT_ADMIN_ROLE = 0x000...000
 
 const MTA_TOKEN_ABI = [
@@ -97,7 +98,12 @@ async function main() {
   }
 
   const deployments = JSON.parse(fs.readFileSync(filePath, "utf-8"));
-  const { MTAToken: tokenAddr, MTAVesting: vestingAddr, MTAStaking: stakingAddr } = deployments.contracts;
+  const {
+    MTAToken:   tokenAddr,
+    MTAVesting: vestingAddr,
+    MTAStaking: stakingAddr,
+    MTATimelock: timelockAddr,
+  } = deployments.contracts;
 
   const multisig = process.env.MULTISIG_ADDRESS;
   if (!multisig || multisig === "0x0000000000000000000000000000000000000000") {
@@ -166,22 +172,32 @@ async function main() {
   await renounceAndLog(vesting, VESTING_ADMIN_ROLE,"VESTING_ADMIN_ROLE",  deployer.address, "Vesting");
 
   // ── 3. MTAStaking Rol Transferleri ───────────────────────────────────────
+  // UPGRADER_ROLE → Timelock (governance + 48h delay for upgrades)
+  // DEFAULT_ADMIN_ROLE / PAUSER_ROLE → multisig (emergency operations)
   console.log("\n[3/4] MTAStaking rolleri:");
-  await grantAndLog(staking,  ADMIN_ROLE,  "DEFAULT_ADMIN_ROLE", multisig, "Staking");
-  await grantAndLog(staking,  PAUSER_ROLE, "PAUSER_ROLE",        multisig, "Staking");
-  await renounceAndLog(staking, ADMIN_ROLE,  "DEFAULT_ADMIN_ROLE", deployer.address, "Staking");
-  await renounceAndLog(staking, PAUSER_ROLE, "PAUSER_ROLE",        deployer.address, "Staking");
+  const upgradeTarget = timelockAddr || multisig; // Timelock preferred; fallback to multisig
+  if (!timelockAddr) {
+    console.log("  ⚠  MTATimelock adresi bulunamadı — UPGRADER_ROLE multisig'e verilecek");
+  }
+  await grantAndLog(staking,  ADMIN_ROLE,    "DEFAULT_ADMIN_ROLE", multisig,     "Staking");
+  await grantAndLog(staking,  PAUSER_ROLE,   "PAUSER_ROLE",        multisig,     "Staking");
+  await grantAndLog(staking,  UPGRADER_ROLE, "UPGRADER_ROLE",      upgradeTarget,"Staking");
+  await renounceAndLog(staking, ADMIN_ROLE,    "DEFAULT_ADMIN_ROLE", deployer.address, "Staking");
+  await renounceAndLog(staking, PAUSER_ROLE,   "PAUSER_ROLE",        deployer.address, "Staking");
+  await renounceAndLog(staking, UPGRADER_ROLE, "UPGRADER_ROLE",      deployer.address, "Staking");
 
   // ── 4. Rol doğrulama kontrolü ─────────────────────────────────────────────
   console.log("\n[4/4] Doğrulama:");
   const checks: Array<{ label: string; pass: boolean }> = [
-    { label: "Token DEFAULT_ADMIN multisig'te",   pass: await token.hasRole(ADMIN_ROLE,  multisig) },
-    { label: "Token DEFAULT_ADMIN deployer'da yok", pass: !(await token.hasRole(ADMIN_ROLE, deployer.address)) },
-    { label: "Minting devre dışı",                 pass: await token.isMintingDisabled() },
-    { label: "Vesting VESTING_ADMIN multisig'te",  pass: await vesting.hasRole(VESTING_ADMIN_ROLE, multisig) },
+    { label: "Token DEFAULT_ADMIN multisig'te",       pass: await token.hasRole(ADMIN_ROLE,      multisig) },
+    { label: "Token DEFAULT_ADMIN deployer'da yok",   pass: !(await token.hasRole(ADMIN_ROLE,    deployer.address)) },
+    { label: "Minting devre dışı",                    pass: await token.isMintingDisabled() },
+    { label: "Vesting VESTING_ADMIN multisig'te",     pass: await vesting.hasRole(VESTING_ADMIN_ROLE, multisig) },
     { label: "Vesting VESTING_ADMIN deployer'da yok", pass: !(await vesting.hasRole(VESTING_ADMIN_ROLE, deployer.address)) },
-    { label: "Staking DEFAULT_ADMIN multisig'te",  pass: await staking.hasRole(ADMIN_ROLE, multisig) },
-    { label: "Staking DEFAULT_ADMIN deployer'da yok", pass: !(await staking.hasRole(ADMIN_ROLE, deployer.address)) },
+    { label: "Staking DEFAULT_ADMIN multisig'te",     pass: await staking.hasRole(ADMIN_ROLE,    multisig) },
+    { label: "Staking DEFAULT_ADMIN deployer'da yok", pass: !(await staking.hasRole(ADMIN_ROLE,  deployer.address)) },
+    { label: "Staking UPGRADER_ROLE deployer'da yok", pass: !(await staking.hasRole(UPGRADER_ROLE, deployer.address)) },
+    { label: "Staking UPGRADER_ROLE devredildi",      pass: await staking.hasRole(UPGRADER_ROLE, upgradeTarget) },
   ];
   let allPassed = true;
   for (const c of checks) {
@@ -199,6 +215,7 @@ async function main() {
     adminTransferred: new Date().toISOString(),
     deployer: deployer.address,
     mintingRevoked: true,
+    upgradeTarget,
     rolesTransferred: [
       "MTAToken:DEFAULT_ADMIN_ROLE",
       "MTAToken:PAUSER_ROLE",
@@ -207,6 +224,7 @@ async function main() {
       "MTAVesting:VESTING_ADMIN_ROLE",
       "MTAStaking:DEFAULT_ADMIN_ROLE",
       "MTAStaking:PAUSER_ROLE",
+      "MTAStaking:UPGRADER_ROLE",
     ],
   };
   fs.writeFileSync(filePath, JSON.stringify(deployments, null, 2));
