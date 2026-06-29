@@ -1,10 +1,10 @@
-import { ethers } from "hardhat";
+import { ethers, network } from "hardhat";
 import * as fs from "fs";
 import * as path from "path";
 
 async function main() {
   const dep = JSON.parse(
-    fs.readFileSync(path.join(__dirname, "../../deployments/localhost.json"), "utf-8")
+    fs.readFileSync(path.join(__dirname, `../../deployments/${network.name}.json`), "utf-8")
   );
 
   const token   = await ethers.getContractAt("MTAToken",   dep.contracts.MTAToken);
