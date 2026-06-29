@@ -22,6 +22,8 @@ const DAPP_LINKS = [
   { label: 'Vesting',    href: '/vesting' },
   { label: 'Governance', href: '/governance' },
   { label: 'Treasury',   href: '/treasury' },
+  { label: 'Analytics',  href: '/analytics' },
+  { label: 'Admin',      href: '/admin' },
 ] as const;
 
 export function Navbar() {

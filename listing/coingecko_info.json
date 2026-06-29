@@ -1,0 +1,42 @@
+{
+  "id": "metaaras",
+  "symbol": "mta",
+  "name": "MetaAras",
+  "description": {
+    "en": "MetaAras (MTA) is a professional-grade multichain DeFi governance and utility token deployed on Ethereum and BNB Smart Chain. The protocol features four staking tiers offering 8%–40% fixed APY, on-chain DAO governance with OpenZeppelin Governor v5 and 48-hour Timelock, and transparent linear vesting contracts for team and investors. All protocol parameters — including staking APY, treasury disbursements, and contract upgrades — are controlled exclusively by MTA token holder governance. MetaAras is open-source under the MIT license with a hard-capped supply of 100,000,000 MTA and no inflationary minting mechanism after initial distribution."
+  },
+  "links": {
+    "homepage": ["https://metaaras.io"],
+    "whitepaper": "https://metaaras.io/whitepaper",
+    "blockchain_site": [
+      "https://etherscan.io/token/MAINNET_TOKEN_ADDRESS_PLACEHOLDER",
+      "https://bscscan.com/token/BSC_MAINNET_TOKEN_ADDRESS_PLACEHOLDER"
+    ],
+    "github": ["https://github.com/metaaras/metaaras-protocol"],
+    "twitter_screen_name": "MetaArasDAO",
+    "telegram_channel_identifier": "metaaras"
+  },
+  "categories": ["Decentralized Finance (DeFi)", "Governance", "BNB Chain Ecosystem", "Ethereum Ecosystem"],
+  "market_data": {
+    "total_supply": 100000000,
+    "max_supply": 100000000,
+    "circulating_supply_tge": 25000000
+  },
+  "contract_address": {
+    "ethereum": "MAINNET_TOKEN_ADDRESS_PLACEHOLDER",
+    "binance-smart-chain": "BSC_MAINNET_TOKEN_ADDRESS_PLACEHOLDER"
+  },
+  "decimals": 18,
+  "asset_platform_id": "ethereum",
+  "platforms": {
+    "ethereum": "MAINNET_TOKEN_ADDRESS_PLACEHOLDER",
+    "binance-smart-chain": "BSC_MAINNET_TOKEN_ADDRESS_PLACEHOLDER"
+  },
+  "image": {
+    "thumb": "listing/logo_64x64.png",
+    "small": "listing/logo_200x200.png",
+    "large": "listing/logo_400x400.png"
+  },
+  "tickers": [],
+  "status_updates": []
+}
