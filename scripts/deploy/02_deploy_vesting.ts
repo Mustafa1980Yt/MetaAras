@@ -32,7 +32,18 @@ async function main() {
   const liquidityWallet  = resolveAddr(process.env.LIQUIDITY_WALLET);
   const publicSaleWallet = resolveAddr(process.env.PUBLIC_SALE_WALLET);
 
-  // Tokenomics miktarları
+  // Tokenomics miktarları (toplam 100M MTA)
+  // ┌────────────────┬────────┬─────────────────────────────────────┐
+  // │ Tahsis         │ Miktar │ Nereye                              │
+  // ├────────────────┼────────┼─────────────────────────────────────┤
+  // │ Team           │  15M   │ MTAVesting kontratı (12ay cliff)    │
+  // │ Seed           │  10M   │ MTAVesting kontratı (6ay cliff)     │
+  // │ Ecosystem      │  35M   │ Direkt ECOSYSTEM_WALLET (DAO-yönetimli)│
+  // │ Liquidity      │  20M   │ Direkt LIQUIDITY_WALLET (DEX havuzları)│
+  // │ Treasury       │  15M   │ Direkt TREASURY_WALLET (Timelock)   │
+  // │ Public Sale    │   5M   │ Direkt PUBLIC_SALE_WALLET (TGE)     │
+  // └────────────────┴────────┴─────────────────────────────────────┘
+  // Public Sale TGE'de tam olarak unlock olur — vesting uygulanmaz.
   const TEAM_AMOUNT        = parseEther("15000000");   // %15
   const SEED_AMOUNT        = parseEther("10000000");   // %10
   const ECOSYSTEM_AMOUNT   = parseEther("35000000");   // %35

@@ -310,42 +310,47 @@ contract MTAStaking is
      * @notice Closes a staking position and returns tokens to the caller.
      * @dev    If the lock period has not elapsed, a 20% early-exit penalty is charged.
      *         Any pending rewards are automatically paid before the principal is returned.
+     *         Strict CEI: ALL state mutations complete before ANY external call.
      * @param positionId Index of the position to unstake.
      */
     function unstake(uint256 positionId) external whenNotPaused nonReentrant {
         StakePosition storage pos = positions[msg.sender][positionId];
         if (!pos.active) revert Staking__PositionNotActive();
 
-        // Pay pending rewards before closing position
+        // ── Checks ────────────────────────────────────────────────────────────
         uint256 pendingReward = _pendingRewards(pos);
-        if (pendingReward > 0) {
-            pos.claimedRewards += pendingReward;
-            pos.lastClaimTime   = uint48(block.timestamp);
-            stakingToken.safeTransferFrom(rewardsPool, msg.sender, pendingReward);
-            emit RewardClaimed(msg.sender, positionId, pendingReward);
-        }
-
-        uint256 amount  = pos.amount;
-        uint256 penalty = 0;
+        uint256 amount        = pos.amount;
+        uint256 penalty       = 0;
 
         if (block.timestamp < pos.unlockTime) {
             penalty = (amount * EARLY_EXIT_PENALTY_BPS) / BPS_DENOMINATOR;
-            totalPenaltiesCollected += penalty;
-            emit EarlyExitPenaltyCollected(msg.sender, penalty);
         }
 
         uint256 returnAmount = amount - penalty;
 
-        // CEI: state before external calls
+        // ── Effects (all state before any external call) ──────────────────────
         pos.active         = false;
         pos.amount         = 0;
-        globalTotalStaked -= amount;
+        pos.claimedRewards += pendingReward;
+        pos.lastClaimTime   = uint48(block.timestamp);
+        globalTotalStaked  -= amount;
+
+        if (penalty > 0) {
+            totalPenaltiesCollected += penalty;
+        }
+
+        // ── Interactions ──────────────────────────────────────────────────────
+        if (pendingReward > 0) {
+            stakingToken.safeTransferFrom(rewardsPool, msg.sender, pendingReward);
+            emit RewardClaimed(msg.sender, positionId, pendingReward);
+        }
 
         if (penalty > 0) {
             stakingToken.safeTransfer(rewardsPool, penalty);
+            emit EarlyExitPenaltyCollected(msg.sender, penalty);
         }
-        stakingToken.safeTransfer(msg.sender, returnAmount);
 
+        stakingToken.safeTransfer(msg.sender, returnAmount);
         emit Unstaked(msg.sender, positionId, returnAmount, penalty);
     }
 

@@ -4,12 +4,27 @@ import "@nomicfoundation/hardhat-ignition-ethers";
 import "@openzeppelin/hardhat-upgrades";
 import "dotenv/config";
 
-// Placeholder veya eksik key varsa sıfır key kullan (hardhat compile hatasını engeller)
-const _rawKey = process.env.PRIVATE_KEY || "";
-const PRIVATE_KEY = /^0x[0-9a-fA-F]{64}$/.test(_rawKey) ? _rawKey : "0x" + "0".repeat(64);
-const ALCHEMY_API_KEY  = process.env.ALCHEMY_API_KEY  || "";
+// Deployer private key — compile time'da fallback to zero key so `hardhat compile` works
+// without any .env. The zero key is rejected by real networks at tx broadcast time.
+const _rawKey   = process.env.PRIVATE_KEY || "";
+const VALID_KEY = /^0x[0-9a-fA-F]{64}$/.test(_rawKey);
+const PRIVATE_KEY = VALID_KEY ? _rawKey : "0x" + "0".repeat(64);
+
+// Guard against accidental mainnet deploys with a missing or placeholder key.
+// The process.env.npm_lifecycle_script check avoids triggering during `hardhat compile`.
+const _isMainnetTask =
+  (process.env.HARDHAT_NETWORK === "mainnet" || process.env.HARDHAT_NETWORK === "bsc") &&
+  process.env.npm_lifecycle_script?.includes("deploy");
+if (_isMainnetTask && !VALID_KEY) {
+  throw new Error(
+    "PRIVATE_KEY missing or invalid — refusing to proceed with mainnet deploy.\n" +
+    "Set a valid 0x-prefixed 64-hex-char key in your .env file."
+  );
+}
+
+const ALCHEMY_API_KEY   = process.env.ALCHEMY_API_KEY   || "";
 const ETHERSCAN_API_KEY = process.env.ETHERSCAN_API_KEY || "";
-const BSCSCAN_API_KEY  = process.env.BSCSCAN_API_KEY  || "";
+const BSCSCAN_API_KEY   = process.env.BSCSCAN_API_KEY   || "";
 
 // BSC Testnet RPC — custom URL opsiyonel; yoksa üç public endpoint arasında dönüşümlü kullanılır.
 // Özel RPC için (daha stabil): QuickNode, Ankr, Chainstack BSC Testnet endpoint'i

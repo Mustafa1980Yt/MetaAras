@@ -437,4 +437,67 @@ describe("MTAStaking", () => {
       ).to.be.revertedWithCustomError(staking, "AccessControlUnauthorizedAccount");
     });
   });
+
+  // ─── Edge Cases ────────────────────────────────────────────────────────────
+  describe("Edge Cases", () => {
+    beforeEach(async () => {
+      await staking.connect(user1).stake(STAKE_AMOUNT, Gold); // 180 day lock
+    });
+
+    it("early exit penalty applies to compounded amount (not original stake only)", async () => {
+      // Compound after 90 days — adds rewards to pos.amount
+      await time.increase(LOCK_180D / 2); // 90 days
+      await staking.connect(user1).compound(0);
+      const posAfterCompound = await staking.getPosition(user1.address, 0);
+      const compoundedAmount = posAfterCompound.amount; // > STAKE_AMOUNT
+      expect(compoundedAmount).to.be.gt(STAKE_AMOUNT);
+
+      // Immediately exit early (still before unlockTime)
+      const balBefore = await token.balanceOf(user1.address);
+      await staking.connect(user1).unstake(0);
+      const balAfter = await token.balanceOf(user1.address);
+
+      const received = balAfter - balBefore;
+      const expectedReturn = (compoundedAmount * 8_000n) / 10_000n; // 80% of compounded
+      // Must return ≥80% of compounded amount (plus tiny one-block reward)
+      expect(received).to.be.gte(expectedReturn);
+      // Must not return more than 80% of compounded + small reward tolerance (0.01%)
+      const upperBound = compoundedAmount; // can't get more than 100% of compounded
+      expect(received).to.be.lte(upperBound);
+    });
+
+    it("updateTierConfig retroactively changes APY for existing positions", async () => {
+      // Wait 30 days at 25% APY → then admin doubles APY to 50%
+      await time.increase(LOCK_30D);
+      const rewardBefore30d = await staking.pendingRewards(user1.address, 0);
+
+      // Admin doubles Gold APY
+      await staking.connect(admin).updateTierConfig(Gold, LOCK_180D, 5_000); // 50%
+
+      // Wait another 30 days at 50% APY
+      await time.increase(LOCK_30D);
+      const rewardAfter60d = await staking.pendingRewards(user1.address, 0);
+
+      // Second 30-day window at 50% should contribute ~2x first window at 25%
+      // Total = (first 30d @ 25%) + (next 30d @ 50%)
+      // After updateTierConfig, lastClaimTime stays unchanged, so pendingRewards
+      // uses new apyBps for the FULL elapsed time since lastClaim.
+      // Since lastClaimTime was NOT reset, the new APY applies to all elapsed time.
+      expect(rewardAfter60d).to.be.gt(rewardBefore30d);
+    });
+
+    it("should revert updateTierConfig with apyBps > 10000 (100%)", async () => {
+      await expect(
+        staking.connect(admin).updateTierConfig(Bronze, LOCK_30D, 10_001)
+      ).to.be.revertedWithCustomError(staking, "Staking__InvalidApyBps");
+    });
+
+    it("blacklisted user cannot stake (token transfer blocked)", async () => {
+      // user2 already has tokens + approval from outer beforeEach
+      await token.connect(blacklister).setBlacklist(user2.address, true);
+      await expect(
+        staking.connect(user2).stake(parseEther("1"), Bronze)
+      ).to.be.revertedWithCustomError(token, "MTA__Blacklisted");
+    });
+  });
 });

@@ -84,7 +84,7 @@ export default function TokenomicsPage() {
             <p className="text-xs text-[var(--text-muted)] mt-0.5">APY</p>
             <div className="mt-3 pt-3 border-t border-[var(--border)] space-y-1 text-sm text-[var(--text-secondary)]">
               <p>Lock: {tier.lockDays} days</p>
-              <p>Min: {formatNumber(tier.minAmount)} MTA</p>
+              <p>No minimum stake</p>
             </div>
           </Card>
         ))}

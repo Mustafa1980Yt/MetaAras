@@ -214,7 +214,7 @@ export default function StakingPage() {
         <div className="flex rounded-xl border border-[var(--border)] overflow-hidden text-sm font-medium">
           <button onClick={() => setTab('stake')} className={`px-4 py-2 transition-colors ${tab === 'stake' ? 'bg-brand-500 text-white' : 'text-[var(--text-secondary)] hover:bg-[var(--surface-2)]'}`}>New Stake</button>
           <button onClick={() => setTab('positions')} className={`px-4 py-2 transition-colors ${tab === 'positions' ? 'bg-brand-500 text-white' : 'text-[var(--text-secondary)] hover:bg-[var(--surface-2)]'}`}>
-            My Positions {positionCount > 0 && <span className="ml-1 px-1.5 py-0.5 rounded-full bg-brand-500/20 text-brand-400 text-xs">{positionCount}</span>}
+            My Positions
           </button>
         </div>
       </div>
@@ -223,7 +223,7 @@ export default function StakingPage() {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
         <StatCard label="Your Balance"    value={`${userBalance} MTA`}              icon={<Zap className="w-5 h-5" />}       accentColor="#6366f1" />
         <StatCard label="Global TVL"      value={`${globalTotalStaked ?? '—'} MTA`} icon={<Lock className="w-5 h-5" />}      accentColor="#22d3ee" loading={!globalTotalStaked} />
-        <StatCard label="Active Positions" value={String(positionCount)}            icon={<TrendingUp className="w-5 h-5" />} accentColor="#a78bfa" />
+        <StatCard label="Total Positions"  value={String(positionCount)}            icon={<TrendingUp className="w-5 h-5" />} accentColor="#a78bfa" />
       </div>
 
       {/* Tab: New Stake */}
@@ -244,7 +244,7 @@ export default function StakingPage() {
                   </div>
                   <div className="space-y-1 text-xs text-[var(--text-muted)]">
                     <div className="flex justify-between"><span>Lock period</span><span className="text-[var(--text-secondary)]">{formatDuration(t.lockDays)}</span></div>
-                    <div className="flex justify-between"><span>Minimum</span><span className="text-[var(--text-secondary)]">{formatNumber(t.minAmount)} MTA</span></div>
+                    <div className="flex justify-between"><span>Min amount</span><span className="text-[var(--text-secondary)]">No minimum</span></div>
                   </div>
                 </button>
               ))}
@@ -266,7 +266,7 @@ export default function StakingPage() {
                   <div className="relative">
                     <input
                       type="number" min="0" value={amount} onChange={e => setAmount(e.target.value)}
-                      placeholder={`Min ${formatNumber(tier.minAmount)}`}
+                      placeholder="Enter amount"
                       className="w-full px-4 py-3 pr-16 rounded-xl border border-[var(--border)] bg-[var(--surface-2)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-brand-500"
                     />
                     <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-[var(--text-muted)]">MTA</span>

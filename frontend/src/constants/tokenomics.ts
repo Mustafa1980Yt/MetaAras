@@ -10,10 +10,10 @@ export const ALLOCATIONS = [
 ] as const;
 
 export const STAKING_TIERS = [
-  { name: 'Bronze',   lockDays: 30,  apy: 8,  color: '#b45309', minAmount: 100 },
-  { name: 'Silver',   lockDays: 90,  apy: 15, color: '#94a3b8', minAmount: 1_000 },
-  { name: 'Gold',     lockDays: 180, apy: 25, color: '#ca8a04', minAmount: 5_000 },
-  { name: 'Platinum', lockDays: 365, apy: 40, color: '#7c3aed', minAmount: 10_000 },
+  { name: 'Bronze',   lockDays: 30,  apy: 8,  color: '#b45309' },
+  { name: 'Silver',   lockDays: 90,  apy: 15, color: '#94a3b8' },
+  { name: 'Gold',     lockDays: 180, apy: 25, color: '#ca8a04' },
+  { name: 'Platinum', lockDays: 365, apy: 40, color: '#7c3aed' },
 ] as const;
 
 export const TOKEN_SYMBOL = 'MTA';

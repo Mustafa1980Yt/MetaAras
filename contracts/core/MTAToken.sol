@@ -8,7 +8,6 @@ import {ERC20Votes} from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Vo
 import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 import {Pausable} from "@openzeppelin/contracts/utils/Pausable.sol";
 import {Nonces} from "@openzeppelin/contracts/utils/Nonces.sol";
-import {Time} from "@openzeppelin/contracts/utils/types/Time.sol";
 import {IMTAToken} from "../interfaces/IMTAToken.sol";
 
 /**
@@ -182,7 +181,7 @@ contract MTAToken is
         return totalSupply();
     }
 
-    // ─── Public: EIP-6372 Clock ────────────────────────────────────────────────
+    // ─── Public: View ──────────────────────────────────────────────────────────
 
     /**
      * @notice Returns the current timestamp as the vote-checkpoint clock value.
@@ -195,18 +194,6 @@ contract MTAToken is
     }
 
     /**
-     * @dev EIP-6372 machine-readable clock description.
-     *      "mode=timestamp" signals that getPastVotes / getPastTotalSupply timepoints are
-     *      Unix seconds, not block numbers.
-     */
-    // solhint-disable-next-line func-name-mixedcase
-    function CLOCK_MODE() public pure override returns (string memory) {
-        return "mode=timestamp";
-    }
-
-    // ─── Public: View ──────────────────────────────────────────────────────────
-
-    /**
      * @notice Returns the current EIP-2612 nonce for `owner`.
      * @dev    Resolves the diamond-inheritance conflict between ERC20Permit and Nonces.
      * @param owner Address to query.
@@ -217,8 +204,6 @@ contract MTAToken is
         return super.nonces(owner);
     }
 
-    // ─── Public: ERC165 ───────────────────────────────────────────────────────
-
     /**
      * @notice Returns true if this contract implements the interface defined by `interfaceId`.
      * @param interfaceId ERC-165 interface identifier.
@@ -227,6 +212,18 @@ contract MTAToken is
         bytes4 interfaceId
     ) public view override(AccessControl) returns (bool) {
         return super.supportsInterface(interfaceId);
+    }
+
+    // ─── Public: Pure ─────────────────────────────────────────────────────────
+
+    /**
+     * @dev EIP-6372 machine-readable clock description.
+     *      "mode=timestamp" signals that getPastVotes / getPastTotalSupply timepoints are
+     *      Unix seconds, not block numbers.
+     */
+    // solhint-disable-next-line func-name-mixedcase
+    function CLOCK_MODE() public pure override returns (string memory) {
+        return "mode=timestamp";
     }
 
     // ─── Internal Overrides ────────────────────────────────────────────────────

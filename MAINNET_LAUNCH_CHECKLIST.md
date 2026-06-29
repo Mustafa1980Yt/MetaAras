@@ -2,7 +2,7 @@
 
 > **Status**: Pre-Launch · External audit required before mainnet deploy  
 > **Target**: Q3 2026 · Ethereum Mainnet + BSC Mainnet  
-> **Last code review**: 2026-06-29 — 166 tests passing · 0 TypeScript errors · 0 build errors
+> **Last code review**: 2026-06-29 — 170 tests passing · 0 TypeScript errors · 0 build errors
 
 ---
 
@@ -15,6 +15,20 @@
 - [x] **Fuzz tests** — `test/fuzz/MTAStaking.fuzz.test.ts` created (reward formula, APY ordering, penalty exactness, TVL consistency, double-unstake, claim reset, zero-amount)
 - [x] **All 166 tests passing** (`npx hardhat test` — 0 failures)
 - [x] **Frontend build clean** (`npm run build` — 0 TypeScript errors, 24 routes generated)
+
+---
+
+## Completed (Session 3 — 2026-06-29)
+
+- [x] **MTAStaking strict CEI in unstake()** — All state mutations (pos.active, pos.amount, claimedRewards, globalTotalStaked, totalPenaltiesCollected) moved before all external calls — audit-ready re-entrancy hardening
+- [x] **Fake minAmount removed** — `STAKING_TIERS` in `tokenomics.ts` had non-existent on-chain minimums (100/1000/5000/10000 MTA); removed. UI updated: staking page shows "No minimum", tokenomics page updated
+- [x] **Token distribution clarified** — `02_deploy_vesting.ts` now has explicit table comment mapping each allocation to its destination (vesting contract vs. direct wallet vs. TGE unlock)
+- [x] **Staking page badge fix** — Removed misleading positionCount badge from "My Positions" tab (count includes inactive positions, causing user confusion)
+- [x] **MTAStaking edge case tests** — 4 new tests added: (1) compound+early exit penalty on compounded amount, (2) retroactive APY change via updateTierConfig, (3) apyBps > 10000 boundary, (4) blacklisted user stake revert
+- [x] **package.json** — MTAGovernor.test.ts added to coverage and gas-report scripts
+- [x] **hardhat.config.ts** — PRIVATE_KEY validation guard for mainnet/BSC deploy tasks
+- [x] **170 tests passing** (was 166)
+- [x] **0 TypeScript errors**
 
 ---
 
