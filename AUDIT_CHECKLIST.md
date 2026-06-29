@@ -12,8 +12,8 @@
 | Contract | LOC | Complexity | Priority |
 |----------|-----|-----------|----------|
 | `contracts/core/MTAToken.sol` | 224 | Medium | Critical |
-| `contracts/core/MTAStaking.sol` | 497 | High | Critical |
-| `contracts/core/MTAVesting.sol` | ~300 | Medium | Critical |
+| `contracts/core/MTAStaking.sol` | 600 | High | Critical |
+| `contracts/core/MTAVesting.sol` | 430 | Medium | Critical |
 | `contracts/governance/MTAGovernor.sol` | ~120 | Medium | High |
 | `contracts/governance/MTATimelock.sol` | 27 | Low | High |
 | `contracts/interfaces/IMTAToken.sol` | — | Low | Informational |
@@ -98,7 +98,7 @@
 ## Pre-Audit Deliverables (for auditor)
 
 - [ ] Complete source code in `contracts/`
-- [ ] 119/119 unit tests with full coverage report
+- [ ] 194/194 unit+integration+fuzz tests with full coverage report
 - [ ] `AUDIT_PREP.md` — architecture overview (already exists)
 - [ ] `FINAL_AUDIT_REPORT.md` — internal audit findings (already exists)
 - [ ] `hardhat.config.ts` — compiler settings

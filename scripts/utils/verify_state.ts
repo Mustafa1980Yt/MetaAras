@@ -22,7 +22,7 @@ const ADMIN_ROLE       = ethers.ZeroHash;
 const TOKEN_ABI = [
   "function totalSupply() external view returns (uint256)",
   "function MAX_SUPPLY() external view returns (uint256)",
-  "function mintingDisabled() external view returns (bool)",
+  "function isMintingDisabled() external view returns (bool)",
   "function paused() external view returns (bool)",
   "function hasRole(bytes32 role, address account) external view returns (bool)",
   "function circulatingSupply() external view returns (uint256)",
@@ -107,7 +107,7 @@ async function main() {
   console.log("\n[2/6] MTAToken Durumu:");
   const totalSupply = await token.totalSupply();
   const maxSupply   = await token.MAX_SUPPLY();
-  const mintingOff  = await token.mintingDisabled();
+  const mintingOff  = await token.isMintingDisabled();
   const tokenPaused = await token.paused();
   const circulating = await token.circulatingSupply();
 
