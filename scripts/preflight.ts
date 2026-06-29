@@ -32,7 +32,7 @@ function isPlaceholder(val: string): boolean {
 }
 
 const MIN_BALANCE: Record<string, string> = {
-  sepolia:    "0.15",
+  sepolia:    "0.05",
   bscTestnet: "0.05",
   mainnet:    "0.30",
   bsc:        "0.10",

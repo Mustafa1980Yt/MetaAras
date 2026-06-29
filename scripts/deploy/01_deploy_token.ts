@@ -17,9 +17,12 @@ async function main() {
   console.log(`Balance  : ${ethers.formatEther(await ethers.provider.getBalance(deployer.address))} ETH`);
   console.log("───────────────────────────────────────────");
 
-  // Env kontrolleri
-  const multisig  = process.env.MULTISIG_ADDRESS  || deployer.address;
-  const minter    = deployer.address; // Geçici — dağılım sonrası revoke
+  // Env kontrolleri — zero address fallback to deployer
+  const _msRaw   = process.env.MULTISIG_ADDRESS || "";
+  const multisig = (!_msRaw || _msRaw === "0x0000000000000000000000000000000000000000")
+    ? deployer.address
+    : _msRaw;
+  const minter   = deployer.address; // Geçici — dağılım sonrası revoke
 
   console.log(`Admin    : ${deployer.address}`);
   console.log(`Minter   : ${minter}`);

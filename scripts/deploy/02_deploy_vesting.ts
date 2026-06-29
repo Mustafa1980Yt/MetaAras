@@ -23,12 +23,14 @@ async function main() {
   console.log("═══════════════════════════════════════════");
   console.log(`Token    : ${tokenAddress}`);
 
-  const treasuryWallet  = process.env.TREASURY_WALLET  || deployer.address;
-  const teamWallet      = process.env.TEAM_WALLET      || deployer.address;
-  const seedWallet      = process.env.SEED_WALLET      || deployer.address;
-  const ecosystemWallet = process.env.ECOSYSTEM_WALLET || deployer.address;
-  const liquidityWallet = process.env.LIQUIDITY_WALLET || deployer.address;
-  const publicSaleWallet = process.env.PUBLIC_SALE_WALLET || deployer.address;
+  const ZERO = "0x0000000000000000000000000000000000000000";
+  const resolveAddr = (v: string | undefined) => (!v || v === ZERO) ? deployer.address : v;
+  const treasuryWallet   = resolveAddr(process.env.TREASURY_WALLET);
+  const teamWallet       = resolveAddr(process.env.TEAM_WALLET);
+  const seedWallet       = resolveAddr(process.env.SEED_WALLET);
+  const ecosystemWallet  = resolveAddr(process.env.ECOSYSTEM_WALLET);
+  const liquidityWallet  = resolveAddr(process.env.LIQUIDITY_WALLET);
+  const publicSaleWallet = resolveAddr(process.env.PUBLIC_SALE_WALLET);
 
   // Tokenomics miktarları
   const TEAM_AMOUNT        = parseEther("15000000");   // %15

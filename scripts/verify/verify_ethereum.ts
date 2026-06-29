@@ -56,8 +56,9 @@ async function main() {
 
   const deployments = JSON.parse(fs.readFileSync(filePath, "utf-8"));
   const [deployer]  = await ethers.getSigners();
-  const multisig    = process.env.MULTISIG_ADDRESS || deployer.address;
-  const treasury    = process.env.TREASURY_WALLET  || deployer.address;
+  const _msRaw   = process.env.MULTISIG_ADDRESS || "";
+  const multisig = (!_msRaw || _msRaw === "0x0000000000000000000000000000000000000000") ? deployer.address : _msRaw;
+  const treasury = process.env.TREASURY_WALLET || deployer.address;
 
   console.log("═══════════════════════════════════════════");
   console.log(" MetaAras — Ethereum Kontrat Doğrulama");

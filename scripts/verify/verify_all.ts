@@ -60,8 +60,9 @@ async function main() {
   console.log(`Network  : ${network.name}`);
   console.log(`Deployer : ${deployer.address}`);
 
-  const multisig = process.env.MULTISIG_ADDRESS || deployer.address;
-  const treasury = process.env.TREASURY_WALLET  || deployer.address;
+  const _msRaw   = process.env.MULTISIG_ADDRESS || "";
+  const multisig = (!_msRaw || _msRaw === "0x0000000000000000000000000000000000000000") ? deployer.address : _msRaw;
+  const treasury = process.env.TREASURY_WALLET || deployer.address;
 
   const results: Record<string, boolean> = {};
 

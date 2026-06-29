@@ -23,8 +23,12 @@ async function main() {
     throw new Error("MTAToken adresi deployment dosyasında bulunamadı.");
   }
 
-  const multisig     = process.env.MULTISIG_ADDRESS  || deployer.address;
-  const rewardWallet = process.env.TREASURY_WALLET   || deployer.address;
+  const _msRaw       = process.env.MULTISIG_ADDRESS || "";
+  const multisig     = (!_msRaw || _msRaw === "0x0000000000000000000000000000000000000000")
+    ? deployer.address : _msRaw;
+  const _twRaw       = process.env.TREASURY_WALLET || "";
+  const rewardWallet = (!_twRaw || _twRaw === "0x0000000000000000000000000000000000000000")
+    ? deployer.address : _twRaw;
 
   console.log("═══════════════════════════════════════════");
   console.log(" MetaAras (MTA) — Staking Deployment (UUPS)");
