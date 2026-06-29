@@ -5,6 +5,41 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [2.0.0-rc1] — 2026-06-29
+
+### Added
+- **MTAGovernor test suite** — 22 new unit tests (Deployment, Proposals, Voting, State Machine, Quorum)
+- **Admin panel** (`/admin`) — role-gated interface: pause/unpause token + staking, blacklist management, role inspector
+- **Analytics panel** (`/analytics`) — live on-chain metrics: TVL, supply, staking ratio, allocation bar charts
+- **Landing page** — expanded from 1 section to 7 (ProtocolStats, HowItWorks, StakingTiers, Governance, Security, CTA)
+- **Staking page** — complete rewrite: ERC20 approve flow, "My Positions" tab, Claim/Compound/Unstake per position
+- **Mainnet deployment scripts** (01–05): full pipeline from token deploy through admin handover
+- **Liquidity scripts**: `add_pancakeswap_liquidity.ts` (BSC), `add_uniswap_liquidity.ts` (ETH)
+- **Mainnet npm scripts**: `preflight:mainnet`, `deploy:token:mainnet`, `verify:ethereum`, `sync-env:mainnet`, `liquidity:pancakeswap`, etc.
+- **Operational documents**: `MAINNET_RUNBOOK.md`, `LAUNCH_DAY_CHECKLIST.md`, `ROLLBACK_PLAN.md`, `EMERGENCY_PROCEDURES.md`, `PRE_MAINNET_VERIFICATION.md`
+- **Listing files**: `listing/coinmarketcap_info.json`, `listing/coingecko_info.json`, `listing/pancakeswap_listing_checklist.md`
+- **Social guides**: `social/twitter_profile.md`, `social/telegram_group.md`, `social/discord_structure.md`
+- **Deployment guides**: `GITHUB_UPLOAD_GUIDE.md`, `VERCEL_DEPLOY_GUIDE.md`, `DOMAIN_SETUP_GUIDE.md`
+- **`frontend/.env.production.example`** — production environment variable template
+- Navbar: `Analytics` and `Admin` links added to DApp navigation
+- Roadmap: Phase 2 → `completed`, Phase 3 → `in-progress`
+
+### Changed
+- `scripts/deploy/05_post_deploy.ts` — complete rewrite: now transfers PAUSER_ROLE + BLACKLISTER_ROLE + Vesting admin (previously only DEFAULT_ADMIN); added Gnosis Safe code-check guard; idempotent role checks
+- `package.json` version → `2.0.0-rc1`; `test:unit` now includes MTAGovernor tests
+- `README.md` — complete rewrite: GitHub showcase quality, architecture diagram, staking tier table, tokenomics bar chart, security table
+
+### Fixed
+- `05_post_deploy.ts` was writing wrong env var prefix (`NEXT_PUBLIC_MTA_*` instead of `NEXT_PUBLIC_ETH_MAINNET_MTA_*`)
+- `test/unit/MTAGovernor.test.ts` — Typechain overload type errors: `quorumNumerator` and `encodeFunctionData("pause")` casts fixed
+- `frontend/.gitignore` — `.env*` pattern was incorrectly suppressing `.env.production.example`
+
+### Tests
+- **Total: 119/119** (↑ from 97, added 22 MTAGovernor tests)
+- MTAToken: 35 · MTAVesting: 40 · MTAStaking: 22 · MTAGovernor: 22
+
+---
+
 ## [1.1.0-RC1] — 2026-06-29
 
 ### Added
