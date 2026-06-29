@@ -1,0 +1,130 @@
+name: CI — Smart Contracts
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+env:
+  NODE_VERSION: "20"
+
+jobs:
+  # ─── Lint ────────────────────────────────────────────────────────────────
+  lint:
+    name: Solidity Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+      - run: npm ci
+      - run: npx solhint 'contracts/**/*.sol'
+
+  # ─── Compile ─────────────────────────────────────────────────────────────
+  compile:
+    name: Compile Contracts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+      - run: npm ci
+      - run: npx hardhat compile
+      - name: TypeChain üret
+        run: npx hardhat typechain
+      - name: Artifact önbelleği
+        uses: actions/upload-artifact@v4
+        with:
+          name: hardhat-artifacts
+          path: |
+            artifacts/
+            typechain-types/
+
+  # ─── Unit Tests ──────────────────────────────────────────────────────────
+  test:
+    name: Unit Tests + Coverage
+    runs-on: ubuntu-latest
+    needs: compile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+      - run: npm ci
+      - run: npx hardhat test "test/unit/MTAToken.test.ts" "test/unit/MTAStaking.test.ts" "test/unit/MTAVesting.test.ts"
+      - name: Coverage raporu
+        run: npx hardhat coverage --testfiles "test/unit/MTAToken.test.ts" --testfiles "test/unit/MTAStaking.test.ts" --testfiles "test/unit/MTAVesting.test.ts"
+      - name: Coverage eşik kontrolü (%95)
+        run: |
+          LINES=$(cat coverage/coverage-summary.json | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['total']['lines']['pct'])")
+          echo "Line coverage: $LINES%"
+          python3 -c "assert float('$LINES') >= 95, f'Coverage {float(\"$LINES\"):.1f}% < 95% threshold'"
+      - name: Coverage raporu yükle
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-report
+          path: coverage/
+
+  # ─── Integration Tests ───────────────────────────────────────────────────
+  integration:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+      - run: npm ci
+      - run: npx hardhat test test/integration/
+        env:
+          ALCHEMY_API_KEY: ${{ secrets.ALCHEMY_API_KEY }}
+
+  # ─── Static Analysis ─────────────────────────────────────────────────────
+  slither:
+    name: Slither Static Analysis
+    runs-on: ubuntu-latest
+    needs: compile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+      - run: npm ci
+      - uses: crytic/slither-action@v0.4.0
+        with:
+          target: "contracts/"
+          slither-args: "--exclude-dependencies --exclude-informational"
+          fail-on: high
+
+  # ─── Gas Report ──────────────────────────────────────────────────────────
+  gas-report:
+    name: Gas Report
+    runs-on: ubuntu-latest
+    needs: compile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+      - run: npm ci
+      - run: REPORT_GAS=true npx hardhat test "test/unit/MTAToken.test.ts" "test/unit/MTAStaking.test.ts" "test/unit/MTAVesting.test.ts"
+        env:
+          CMC_API_KEY: ${{ secrets.CMC_API_KEY }}
+      - name: Gas raporu yükle
+        uses: actions/upload-artifact@v4
+        with:
+          name: gas-report
+          path: gas-report.txt
+          if-no-files-found: ignore

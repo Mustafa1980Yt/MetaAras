@@ -1,0 +1,136 @@
+name: CI — Frontend
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - "frontend/**"
+      - ".github/workflows/frontend.yml"
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - "frontend/**"
+      - ".github/workflows/frontend.yml"
+
+env:
+  NODE_VERSION: "20"
+
+defaults:
+  run:
+    working-directory: frontend
+
+jobs:
+  # ─── TypeScript Check ────────────────────────────────────────────────────
+  typecheck:
+    name: TypeScript Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npx tsc --noEmit
+        env:
+          NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID: demo-project-id
+          NEXT_PUBLIC_NETWORK_ENV: testnet
+
+  # ─── Build ────────────────────────────────────────────────────────────────
+  build:
+    name: Next.js Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - name: Production build
+        run: npx next build
+        env:
+          NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID: ${{ secrets.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID != '' && secrets.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || 'demo-project-id' }}
+          NEXT_PUBLIC_NETWORK_ENV: testnet
+          NEXT_PUBLIC_MTA_TOKEN_ADDRESS: "0x0000000000000000000000000000000000000000"
+          NEXT_PUBLIC_MTA_STAKING_ADDRESS: "0x0000000000000000000000000000000000000000"
+          NEXT_PUBLIC_MTA_VESTING_ADDRESS: "0x0000000000000000000000000000000000000000"
+          NEXT_PUBLIC_MTA_GOVERNOR_ADDRESS: "0x0000000000000000000000000000000000000000"
+          NEXT_PUBLIC_MTA_TIMELOCK_ADDRESS: "0x0000000000000000000000000000000000000000"
+      - name: Build artifact yükle
+        uses: actions/upload-artifact@v4
+        with:
+          name: nextjs-build
+          path: frontend/.next/
+          retention-days: 7
+
+  # ─── E2E Tests (Playwright) ───────────────────────────────────────────────
+  e2e:
+    name: Playwright E2E Tests
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - name: Playwright browser yükle
+        run: npx playwright install --with-deps chromium
+      - name: Build artifact indir
+        uses: actions/download-artifact@v4
+        with:
+          name: nextjs-build
+          path: frontend/.next/
+      - name: E2E testleri çalıştır
+        run: npx playwright test --project=chromium
+        env:
+          CI: "true"
+          NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID: demo-project-id
+          NEXT_PUBLIC_NETWORK_ENV: testnet
+      - name: Playwright raporu yükle
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report
+          path: frontend/playwright-report/
+          retention-days: 30
+
+  # ─── Full Browser Matrix (main branch only) ───────────────────────────────
+  e2e-full:
+    name: E2E — Full Browser Matrix
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - name: Tüm Playwright browserları yükle
+        run: npx playwright install --with-deps
+      - name: Build artifact indir
+        uses: actions/download-artifact@v4
+        with:
+          name: nextjs-build
+          path: frontend/.next/
+      - name: Tam E2E testi (5 browser)
+        run: npx playwright test
+        env:
+          CI: "true"
+          NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID: demo-project-id
+          NEXT_PUBLIC_NETWORK_ENV: testnet
+      - name: Playwright raporu yükle
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report-full
+          path: frontend/playwright-report/
+          retention-days: 30

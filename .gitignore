@@ -1,0 +1,44 @@
+# Dependencies
+**/node_modules/
+
+# Environment — never commit secrets
+.env
+.env.local
+.env.*.local
+frontend/.env.local
+
+# Build outputs
+cache/
+artifacts/
+typechain-types/
+dist/
+.next/
+out/
+
+# Coverage
+coverage/
+coverage.json
+.nyc_output/
+
+# Deployment JSONs (contain deployed addresses — commit only after audit)
+deployments/*.json
+deployments/*_addresses.txt
+# Keep deployments/README.md tracked
+!deployments/README.md
+
+# Test results
+test-results/
+playwright-report/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Gas reports
+gas-report.txt
