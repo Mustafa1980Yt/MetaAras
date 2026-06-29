@@ -142,7 +142,7 @@ Total Supply: 100,000,000 MTA (Hard Cap — No Inflation Ever)
 
 > All 5 contracts verified on Etherscan · Deployed at block 11,164,753
 
-### BSC Testnet — Pending | Mainnet — Blocked (audit required)
+### BSC Mainnet — Pre-Audit | Ethereum Mainnet — Pre-Audit
 
 ---
 
@@ -316,8 +316,7 @@ Prevents governance attacks where an attacker rapidly passes a malicious proposa
 | ✅ Sepolia testnet deployment | Complete (Jun 2026) |
 | ✅ Production frontend (24 routes) | Complete |
 | ✅ Operational runbooks | Complete |
-| ⏳ BSC Testnet deployment | Pending (tBNB) |
-| 🔒 External security audit | Scheduled Q2 2026 |
+| 🔒 External security audit | Scheduled Q3 2026 |
 | 🔒 Gnosis Safe multisig setup | Pre-mainnet |
 | 🔒 Ethereum Mainnet deployment | Q3 2026 |
 | 🔒 BSC Mainnet deployment | Q3 2026 |

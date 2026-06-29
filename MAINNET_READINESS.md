@@ -33,7 +33,7 @@ Non-blocking items should be addressed within 30 days post-launch.
 | # | Requirement | Status | Notes |
 |---|-------------|--------|-------|
 | C1 | All 5 contracts deployed and verified on Sepolia | ⏳ | Deploy scripts ready |
-| C2 | All 5 contracts deployed and verified on BSC Testnet | ⏳ | Deploy scripts ready |
+| C2 | All 5 contracts deployed and verified on Sepolia | ✅ | Block 11,164,753 — Jun 2026 |
 | C3 | Integration tests pass on fork of mainnet | ⏳ | Requires Alchemy fork |
 | C4 | Token total supply = 100,000,000 MTA after distribution | ⏳ | Verified by deploy script |
 | C5 | Minting permanently revoked (revokeMinter called) | ⏳ | Step 2 of deploy |

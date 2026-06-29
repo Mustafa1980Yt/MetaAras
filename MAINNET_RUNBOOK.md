@@ -25,7 +25,7 @@
 - [ ] Gerçek WalletConnect Project ID alındı (cloud.walletconnect.com)
 - [ ] Production domain DNS'i ayarlandı (app.metaaras.io + metaaras.io)
 - [ ] Cloudflare veya Vercel için SSL sertifikası hazır
-- [ ] BSC Testnet deploy başarıyla tamamlandı ve doğrulandı
+- [ ] Sepolia testnet deploy ve tüm 119 unit test doğrulandı ✅
 
 ---
 

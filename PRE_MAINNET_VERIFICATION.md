@@ -64,8 +64,11 @@
 
 ### 2.1 Testnet'te Kapsamlı Test
 
-- [ ] **BSC Testnet** deploy başarıyla tamamlandı
-- [ ] BSC Testnet'te tüm 119 unit test mantığı elle test edildi (UI'dan)
+> **Strateji Notu:** BSC Testnet deploy atlandı. Ethereum Sepolia testnet başarıyla tamamlandı.
+> Kontrat kodu zincirden bağımsız (EVM-compatible) — Sepolia doğrulaması yeterlidir.
+
+- [x] **Sepolia** deploy başarıyla tamamlandı (5 kontrat — blok 11,164,753) ✅
+- [ ] Sepolia'da tüm 119 unit test mantığı elle test edildi (UI'dan)
 - [ ] Testnet'te staking yapıldı → claim edildi → unstake edildi
 - [ ] Testnet'te governance proposal oluşturuldu → oylandı → timelock'a geçti
 - [ ] Testnet'te vesting schedule oluşturuldu → release edildi
@@ -274,7 +277,7 @@ Mevcut değerler testnet'te doğrulandı:
 | 1 | Harici audit tamamlandı | ⬜ |
 | 2 | Tüm Critical/High bulgular kapatıldı | ⬜ |
 | 3 | Gnosis Safe multisig hazır ve test edildi | ⬜ |
-| 4 | BSC Testnet deploy başarılı | ⬜ |
+| 4 | Sepolia testnet deploy başarılı ve verify edildi | ✅ |
 | 5 | Frontend production build temiz (0 hata) | ⬜ |
 | 6 | Başlangıç likidite planı onaylandı | ⬜ |
 | 7 | Acil prosedürler takımla paylaşıldı | ⬜ |
